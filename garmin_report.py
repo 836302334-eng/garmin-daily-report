@@ -470,7 +470,42 @@ def analyze_cardiac_drift(api, activity_id):
         "accel": accel,
     }
 
+def analyze_end_recovery(api, activity_id):
+    """训练末尾彻底降速后 2 分钟，心率下降的量（心率恢复指标）。"""
+    detail = safe(lambda: api.get_activity_details(activity_id))
+    if not detail:
+        return None
+    idx = {d.get("key"): d.get("metricsIndex") for d in detail.get("metricDescriptors", [])}
 
+    def g(m, key):
+        i = idx.get(key)
+        return m[i] if (i is not None and i < len(m)) else None
+
+    rows = []
+    for m in detail.get("activityDetailMetrics", []):
+        arr = m.get("metrics", [])
+        rows.append({"t": g(arr, "sumElapsedDuration"), "speed": g(arr, "directSpeed"),
+                     "hr": g(arr, "directHeartRate")})
+    mov = [r for r in rows if r["speed"] and r["speed"] > 0.5 and r["hr"]]
+    if len(mov) < 20:
+        return None
+    # 最后一个仍在跑步（速度 >= 2.0 m/s）的点 = 降速开始前的最后点
+    run_pts = [r for r in mov if r["speed"] >= 2.0]
+    if not run_pts:
+        return None
+    last_run = run_pts[-1]
+    t_slow = last_run["t"]
+    # 降速段：该点之后、且不超过 120 秒
+    slow_pts = [r for r in mov if r["t"] > t_slow and r["t"] <= t_slow + 120]
+    if len(slow_pts) < 3:
+        return None
+    start_hr = last_run["hr"]
+    end_hr = min(r["hr"] for r in slow_pts)
+    return {
+        "drop": round(start_hr - end_hr, 1),
+        "start_hr": int(start_hr),
+        "end_hr": int(end_hr),
+    }
 def parse(data, api=None, report_date=None):
     p = {}
     report_date = report_date or datetime.date.today().isoformat()
@@ -570,6 +605,7 @@ def parse(data, api=None, report_date=None):
     p["strength_activity"] = None
     p["run_intensity"] = None
     p["cardiac_drift"] = None
+    p["end_recovery"] = None
 
     acts = data.get("activities") or []
     run_act = None
@@ -589,6 +625,7 @@ def parse(data, api=None, report_date=None):
                 zones = safe(lambda: api.get_activity_hr_in_timezones(run_act.get("activityId")))
                 p["run_intensity"] = analyze_intensity(api, run_act.get("activityId"))
                 p["cardiac_drift"] = analyze_cardiac_drift(api, run_act.get("activityId"))
+                p["end_recovery"] = analyze_end_recovery(api, run_act.get("activityId"))
             r = parse_run(run_act, zones)
             r["device"] = p["device"]
             p["run_activity"] = r
@@ -727,6 +764,9 @@ def build_report(p, issues, date):
         L.append("5. 负荷与恢复指标")
         L.append(f"  · 训练效果：有氧 {ra['aerobic_te']} / 无氧 {ra['anaerobic_te']}")
         L.append(f"  · 运动负荷 {ra['training_load']}")
+                er = p["end_recovery"]
+        if er:
+            L.append(f"  · 末尾降速恢复：2 分钟心率下降 {er['drop']} bpm（{er['start_hr']} → {er['end_hr']}）")
         L.append(f"  · 卡路里 {ra['calories']}　预估汗液流失 {ra['sweat'] if ra['sweat'] else '（）'}ml")
         L.append("")
         L.append("6. 高强度段分析（冲刺/间歇/阈值）")
