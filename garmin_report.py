@@ -26,7 +26,7 @@ WECOM_WEBHOOK = os.environ.get("WECOM_WEBHOOK", "").strip()
 TOKEN_DIR = Path(os.environ.get("GARMIN_TOKEN_DIR", "~/.garminconnect")).expanduser()
 REPORT_DIR = Path(os.environ.get("REPORT_DIR", "reports")).expanduser()
 RETENTION_DAYS = int(os.environ.get("RETENTION_DAYS", "30"))
-DATE_OFFSET = int(os.environ.get("DATE_OFFSET", "0"))  # 0=当天，1=前一天
+DATE_OFFSET = int(os.environ.get("DATE_OFFSET", "0"))
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
 
 logging.basicConfig(
@@ -68,7 +68,6 @@ def login_garmin():
 
 
 def push_wecom(content: str, webhook: str = None, msgtype: str = "markdown"):
-    """企业微信机器人推送。失败只记日志，不抛异常。"""
     webhook = webhook or WECOM_WEBHOOK
     if not webhook:
         log.info("未配置 WECOM_WEBHOOK，跳过推送")
@@ -92,7 +91,6 @@ def push_wecom(content: str, webhook: str = None, msgtype: str = "markdown"):
 
 
 def build_push_summary(p: dict, issues: list, report_date: str, file_path: Path) -> str:
-    """生成企业微信推送摘要。"""
     ra = p.get("run_activity") or {}
     lines = [f"**Garmin 训练日报 · {report_date}**", ""]
 
@@ -131,7 +129,6 @@ def build_push_summary(p: dict, issues: list, report_date: str, file_path: Path)
 
 
 def cleanup_old_reports(report_dir: Path, retention_days: int):
-    """删除超过 retention_days 的日报文件。"""
     if retention_days <= 0:
         return
 
@@ -293,7 +290,6 @@ def parse_strength(a, exercise_sets):
 
 
 def analyze_intensity(api, activity_id):
-    """识别跑步中的高强度段（冲刺/间歇/阈值）。"""
     detail = safe(lambda: api.get_activity_details(activity_id))
     if not detail:
         return None
@@ -390,7 +386,6 @@ def analyze_intensity(api, activity_id):
 
 
 def analyze_cardiac_drift(api, activity_id):
-    """判断心率漂移。返回 '有'/'无'/'疑似有' 或 None。"""
     detail = safe(lambda: api.get_activity_details(activity_id))
     if not detail:
         return None
@@ -470,6 +465,7 @@ def analyze_cardiac_drift(api, activity_id):
         "accel": accel,
     }
 
+
 def analyze_end_recovery(api, activity_id):
     """训练末尾彻底降速后 2 分钟，心率下降的量（心率恢复指标）。"""
     detail = safe(lambda: api.get_activity_details(activity_id))
@@ -489,13 +485,11 @@ def analyze_end_recovery(api, activity_id):
     mov = [r for r in rows if r["speed"] and r["speed"] > 0.5 and r["hr"]]
     if len(mov) < 20:
         return None
-    # 最后一个仍在跑步（速度 >= 2.0 m/s）的点 = 降速开始前的最后点
     run_pts = [r for r in mov if r["speed"] >= 2.0]
     if not run_pts:
         return None
     last_run = run_pts[-1]
     t_slow = last_run["t"]
-    # 降速段：该点之后、且不超过 120 秒
     slow_pts = [r for r in mov if r["t"] > t_slow and r["t"] <= t_slow + 120]
     if len(slow_pts) < 3:
         return None
@@ -506,12 +500,13 @@ def analyze_end_recovery(api, activity_id):
         "start_hr": int(start_hr),
         "end_hr": int(end_hr),
     }
+
+
 def parse(data, api=None, report_date=None):
     p = {}
     report_date = report_date or datetime.date.today().isoformat()
     today = datetime.date.fromisoformat(report_date)
 
-    # --- 训练状态 ---
     ts = data["training_status"] or {}
     d = ts.get("mostRecentTrainingStatus", {}).get("latestTrainingStatusData", {})
     dev = list(d.values())[0] if d else {}
@@ -539,7 +534,6 @@ def parse(data, api=None, report_date=None):
     devs = ts.get("mostRecentTrainingStatus", {}).get("recordedDevices", [])
     p["device"] = devs[0].get("deviceName") if devs else None
 
-    # --- 睡眠 ---
     sl = (data["sleep"] or {}).get("dailySleepDTO", {})
     sub = sl.get("sleepScores") or {}
     p["sleep_score"] = sub.get("overall", {}).get("value")
@@ -569,7 +563,6 @@ def parse(data, api=None, report_date=None):
     p["sleep_need_actual"] = need.get("actual")
     p["sleep_need_baseline"] = need.get("baseline")
 
-    # --- HRV ---
     hs = (data["hrv"] or {}).get("hrvSummary", {})
     p["hrv_status_raw"] = hs.get("status")
     p["hrv_status"] = HRV_STATUS.get(hs.get("status"), hs.get("status"))
@@ -580,7 +573,6 @@ def parse(data, api=None, report_date=None):
     p["hrv_baseline_low"] = bl.get("balancedLow")
     p["hrv_baseline_high"] = bl.get("balancedUpper")
 
-    # --- 身体 ---
     p["rhr"] = (data["summary"] or {}).get("restingHeartRate")
     p["rhr_7d"] = (data["summary"] or {}).get("lastSevenDaysAvgRestingHeartRate")
     p["stress_avg"] = (data["summary"] or {}).get("averageStressLevel")
@@ -600,7 +592,6 @@ def parse(data, api=None, report_date=None):
             p["body_battery"] = max(v[1] for v in vals if v[1] is not None)
             p["bb_level"] = "高" if p["body_battery"] >= 75 else ("中等" if p["body_battery"] >= 50 else "低")
 
-    # --- 最近活动（跑步 + 力量，24 小时窗口）---
     p["run_activity"] = None
     p["strength_activity"] = None
     p["run_intensity"] = None
@@ -639,7 +630,6 @@ def parse(data, api=None, report_date=None):
                 sets = (sets or {}).get("exerciseSets")
             p["strength_activity"] = parse_strength(str_act, sets)
 
-    # --- Garmin Coach 未来 48 小时训练计划 ---
     p["plan_name"] = None
     p["plan_workouts"] = None
     if api is not None:
@@ -716,7 +706,6 @@ def build_report(p, issues, date):
     L.append(f"Garmin 训练日报 · {date}")
     L.append("=" * 48)
 
-    # ---------- 第一大类：跑步训练数据 ----------
     L.append("")
     L.append("【第一大类：跑步训练数据】")
     ra = p["run_activity"]
@@ -764,7 +753,7 @@ def build_report(p, issues, date):
         L.append("5. 负荷与恢复指标")
         L.append(f"  · 训练效果：有氧 {ra['aerobic_te']} / 无氧 {ra['anaerobic_te']}")
         L.append(f"  · 运动负荷 {ra['training_load']}")
-                er = p["end_recovery"]
+        er = p["end_recovery"]
         if er:
             L.append(f"  · 末尾降速恢复：2 分钟心率下降 {er['drop']} bpm（{er['start_hr']} → {er['end_hr']}）")
         L.append(f"  · 卡路里 {ra['calories']}　预估汗液流失 {ra['sweat'] if ra['sweat'] else '（）'}ml")
@@ -791,7 +780,6 @@ def build_report(p, issues, date):
     else:
         L.append("（前 24 小时无跑步记录）")
 
-    # ---------- 第二大类：力量训练数据 ----------
     L.append("")
     L.append("【第二大类：力量训练数据】")
     sa = p["strength_activity"]
@@ -821,7 +809,6 @@ def build_report(p, issues, date):
     else:
         L.append("（前 24 小时无力量训练记录）")
 
-    # ---------- 第三大类：晨起恢复数据 ----------
     L.append("")
     L.append("【第三大类：晨起恢复数据】")
     L.append("")
@@ -853,7 +840,6 @@ def build_report(p, issues, date):
     L.append("6. 旧伤晨起专项（需手动填写）")
     L.append("  · 左脚踝内侧胫骨后肌腱（）　腰椎（）　右脚跟腱（）")
 
-    # ---------- 总结 ----------
     red = [i for i in issues if i[2] == "红"]
     yellow = [i for i in issues if i[2] == "黄"]
     if red:
@@ -876,7 +862,6 @@ def build_report(p, issues, date):
     else:
         L.append("（没有命中任何问题。）")
 
-    # ---------- 训练计划 ----------
     L.append("")
     L.append(f"【训练计划（Garmin Coach · {p.get('plan_name') or '训练计划'}）】")
     wl = p.get("plan_workouts")
@@ -901,7 +886,6 @@ def build_report(p, issues, date):
                     parts.append(TE_MAP.get(w["effect"], w["effect"]))
                 L.append("  · %s：%s" % (tag, "｜".join(parts)))
 
-    # ---------- 原始数据 ----------
     L.append("")
     L.append("【原始数据（可复制导出）】")
     L.append(json.dumps(p, ensure_ascii=False, default=str))
