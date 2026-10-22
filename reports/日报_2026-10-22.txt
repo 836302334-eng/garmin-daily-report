@@ -1,0 +1,72 @@
+================================================
+Garmin 训练日报 · 2026-10-22
+================================================
+
+【第一大类：跑步训练数据】
+（前 24 小时无跑步记录）
+
+【第二大类：力量训练数据】
+
+1. 基础训练指标
+  · 日期：2026-10-21 22:31:33　总时长 25分钟　总组数 31　总消耗 114千卡
+
+2. 核心动作详细指标（需手动填写）
+  · 深蹲：重量kg/次数/组数/组间休息（）
+  · 硬拉：（）
+  · 卧推：（）
+  · 引体向上：每组次数/是否负重/组数（）
+  · 平板支撑：每组时长秒/组数（）
+  · 弹力带90度肩外旋：阻力kg/次数/组数（）
+  · 其他动作：（）
+
+3. 容量与负荷指标（需手动）
+  · 总容量（kg×次数×组数）：（）
+  · 运动负荷：（）
+
+4. 主观与伤病预警（需手动填写）
+  · 动作降级情况：是否降重量/降到多少kg（）
+  · 腰部反馈：深蹲/硬拉腰部压力或牵扯感（）
+  · 脚踝反馈：负重时左脚踝内侧隐痛（）
+  · 执行感受：轻松/正常/力有不逮（）
+
+【第三大类：晨起恢复数据】
+
+1. 睡眠数据
+  · 睡眠评分：68（一般）
+  · 总时长 5小时9分　午睡 0分钟
+  · 深睡 1小时7分 / 浅睡 2小时33分 / REM 1小时29分 / 清醒 0分钟
+  · 分项：时长[差] 压力[优秀] 清醒次数[优秀]
+  · 分项：REM[29% 优秀] 浅睡[50% 优秀] 深睡[22% 优秀] 不安[优秀]
+  · 血氧 95.0%（最低 86%）　呼吸 12.0次/分
+  · 睡眠心率 42.0　睡眠压力 5.0
+  · 睡眠需求：实际 450 / 基准 480 分钟
+
+2. HRV 状态
+  · 状态 平衡　昨晚均值 108ms　昨晚5分钟最高 153ms
+  · 7天均值 85ms　平衡区间 76~94ms
+
+3. 静息心率
+  · 今晨 40　对比7天均值 42
+
+4. 身体电量
+  · 晨起 95（高）
+
+5. 其他日常指标
+  · 压力：平均 8 / 最高 74
+  · 步数 595　距离 0.5km　消耗 656.0千卡
+  · 今天课表：无计划
+
+6. 旧伤晨起专项（需手动填写）
+  · 左脚踝内侧胫骨后肌腱（）　腰椎（）　右脚跟腱（）
+
+【总结】
+今天各项指标正常，可以照课表练。
+（没有命中任何问题。）
+
+【训练计划（Garmin Coach · 5公里 计划）】
+  · 今天：基础训练｜配速 6:15/km｜约 61 分钟｜有氧基础
+  · 2026-10-23：基础训练｜配速 6:15/km｜约 40 分钟｜有氧基础
+  · 2026-10-24：基础训练｜配速 6:15/km｜约 40 分钟｜有氧基础
+
+【原始数据（可复制导出）】
+{"training_status": "维持", "fitness_trend": "持平", "acwr_ratio": 0.3, "acwr_status_raw": "LOW", "acwr_status": "偏低", "acute_load": 156, "chronic_load": 418, "vo2max": 48.7, "load_balance": "AEROBIC_HIGH_SHORTAGE", "load_alow": 951.18286, "load_alow_min": 438, "load_alow_max": 871, "load_ahigh": 560.1786, "load_ahigh_min": 687, "load_ahigh_max": 1120, "load_ana": 125.60208, "load_ana_min": 259, "load_ana_max": 519, "device": "Forerunner 265", "sleep_score": 68, "sleep_qualifier_raw": "FAIR", "sleep_qualifier": "一般", "sleep_duration": "5小时9分", "nap": "0分钟", "deep": "1小时7分", "light": "2小时33分", "rem": "1小时29分", "awake": "0分钟", "sleep_subs": {"时长": "差", "压力": "优秀", "清醒次数": "优秀", "REM占比": "29% 优秀", "浅睡占比": "50% 优秀", "深睡占比": "22% 优秀", "不安": "优秀"}, "spo2_avg": 95.0, "spo2_low": 86, "respiration": 12.0, "sleep_hr": 42.0, "sleep_stress": 5.0, "sleep_need_actual": 450, "sleep_need_baseline": 480, "hrv_status_raw": "BALANCED", "hrv_status": "平衡", "hrv_night": 108, "hrv_5min_high": 153, "hrv_weekly": 85, "hrv_baseline_low": 76, "hrv_baseline_high": 94, "rhr": 40, "rhr_7d": 42, "stress_avg": 8, "stress_max": 74, "steps": 595, "distance_km": 0.5, "calories": 656.0, "has_workout": false, "body_battery": 95, "bb_level": "高", "run_activity": null, "strength_activity": {"name": "居家睡前 a", "time": "2026-10-21 22:31:33", "hours_ago": 11.9, "duration": "25分钟", "avg_hr": 85.0, "max_hr": 108.0, "calories": 114, "set_count": 31}, "run_intensity": null, "cardiac_drift": null, "end_recovery": null, "plan_name": "5公里 计划", "plan_workouts": [{"date": "2026-10-22", "is_today": true, "name": "基础训练", "desc": "6:15/km", "dur_sec": 3660, "effect": "AEROBIC_BASE", "rest": false}, {"date": "2026-10-23", "is_today": false, "name": "基础训练", "desc": "6:15/km", "dur_sec": 2400, "effect": "AEROBIC_BASE", "rest": false}, {"date": "2026-10-24", "is_today": false, "name": "基础训练", "desc": "6:15/km", "dur_sec": 2400, "effect": "AEROBIC_BASE", "rest": false}]}
