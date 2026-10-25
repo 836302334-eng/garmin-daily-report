@@ -1,0 +1,98 @@
+================================================
+Garmin 训练日报 · 2026-10-25
+================================================
+
+【第一大类：跑步训练数据】
+
+1. 基础环境与时间指标
+  · 日期与时间：2026-10-24 22:27:43（夜跑）
+  · 本次课程：长距离跑
+  · 天气：温度 23.0~28.0℃　湿度（）　风速/降雨（）
+  · 装备：手表 Forerunner 265　跑鞋型号（）
+
+2. 核心配速与距离指标
+  · 总距离 4.35km　总时长 28分钟（含暂停 28分钟）
+  · 平均配速 6'33"/km　最快瞬时配速 5'43"/km
+  · 分段配速：
+      - 间歇：4.35km　28分钟　6'33"/km
+      - 跑步：4.22km　26分钟　6'18"/km
+      - 步行：0.12km　1分钟　15'27"/km
+
+3. 心肺与心率指标
+  · 平均心率 129.0 / 最高心率 143.0
+  · 心率区间：Z1 449秒(28%)　Z2 1164秒(72%)　Z3 0秒(0%)　Z4 0秒(0%)　Z5 0秒(0%)
+  · 心率漂移：有（漂移 +13.4 bpm）
+    - 前段 第0~8分钟：平均心率 122 bpm，配速 6'28"/km
+    - 后段 第17~26分钟：平均心率 135 bpm，配速 6'19"/km
+
+4. 跑姿与生物力学指标
+  · 平均步频 176 / 最高步频 194 步/分
+  · 平均步幅 0.87m
+  · 垂直振幅 7.3cm　垂直步幅比 8.5%
+  · 触地时间 254ms
+
+5. 负荷与恢复指标
+  · 训练效果：有氧 2.6 / 无氧 0.0
+  · 运动负荷 50.5
+  · 末尾降速恢复：2 分钟心率下降 35.0 bpm（132 → 97）
+  · 卡路里 371　预估汗液流失 453ml
+
+6. 高强度段分析（冲刺/间歇/阈值）
+  · 主课段：识别出 4 个强度段（配速快于 6'53"/km），累计 25分钟
+  · 步频：平均 182.2 / 最高 192.0 步/分
+  · 心率：平均 132.7 / 最高 143.0 bpm
+  · 触地时间：平均 253.7ms / 最短 240.0ms　腾空时间 75.6ms
+  · 触地腾空比：3.36
+  · 垂直振幅 7.5cm　步幅 87.9cm
+  · 心率恢复速度：峰值后 2 分钟下降 11.0 bpm
+
+7. 主观与伤病预警（需手动填写）
+  · 旧伤反馈：左脚踝内侧胫骨后肌腱是否不适（）时间点（）评分0-10（）继续/降速/停止（）
+  · 其他不适：胫骨前肌（）右跟腱（）腰椎（）膝盖（）
+  · 体感：轻松/有点累/很累（）　抽筋前兆（）
+  · 跑后处理：冰敷15分钟（）　脚踝等长收缩（）
+
+【第二大类：力量训练数据】
+（前 24 小时无力量训练记录）
+
+【第三大类：晨起恢复数据】
+
+1. 睡眠数据
+  · 睡眠评分：81（良好）
+  · 总时长 6小时24分　午睡 0分钟
+  · 深睡 1小时58分 / 浅睡 2小时55分 / REM 1小时32分 / 清醒 0分钟
+  · 分项：时长[一般] 压力[优秀] 清醒次数[优秀]
+  · 分项：REM[24% 优秀] 浅睡[45% 优秀] 深睡[31% 优秀] 不安[优秀]
+  · 血氧 97.0%（最低 81%）　呼吸 13.0次/分
+  · 睡眠心率 48.0　睡眠压力 13.0
+  · 睡眠需求：实际 480 / 基准 480 分钟
+
+2. HRV 状态
+  · 状态 平衡　昨晚均值 83ms　昨晚5分钟最高 128ms
+  · 7天均值 88ms　平衡区间 76~94ms
+
+3. 静息心率
+  · 今晨 43　对比7天均值 41
+
+4. 身体电量
+  · 晨起 91（高）
+
+5. 其他日常指标
+  · 压力：平均 24 / 最高 90
+  · 步数 309　距离 0.2km　消耗 950.0千卡
+  · 今天课表：无计划
+
+6. 旧伤晨起专项（需手动填写）
+  · 左脚踝内侧胫骨后肌腱（）　腰椎（）　右脚跟腱（）
+
+【总结】
+今天各项指标正常，可以照课表练。
+（没有命中任何问题。）
+
+【训练计划（Garmin Coach · 5公里 计划）】
+  · 今天：休息日
+  · 2026-10-26：乳酸阈值｜配速 29:00@5:05/km｜约 49 分钟｜乳酸阈值
+  · 2026-10-27：基础训练｜配速 6:15/km｜约 40 分钟｜有氧基础
+
+【原始数据（可复制导出）】
+{"training_status": "维持", "fitness_trend": "提升", "acwr_ratio": 0.5, "acwr_status_raw": "LOW", "acwr_status": "偏低", "acute_load": 235, "chronic_load": 411, "vo2max": 48.5, "load_balance": "AEROBIC_HIGH_SHORTAGE", "load_alow": 996.6808, "load_alow_min": 436, "load_alow_max": 869, "load_ahigh": 560.1786, "load_ahigh_min": 689, "load_ahigh_max": 1122, "load_ana": 125.60208, "load_ana_min": 259, "load_ana_max": 519, "device": "Forerunner 265", "sleep_score": 81, "sleep_qualifier_raw": "GOOD", "sleep_qualifier": "良好", "sleep_duration": "6小时24分", "nap": "0分钟", "deep": "1小时58分", "light": "2小时55分", "rem": "1小时32分", "awake": "0分钟", "sleep_subs": {"时长": "一般", "压力": "优秀", "清醒次数": "优秀", "REM占比": "24% 优秀", "浅睡占比": "45% 优秀", "深睡占比": "31% 优秀", "不安": "优秀"}, "spo2_avg": 97.0, "spo2_low": 81, "respiration": 13.0, "sleep_hr": 48.0, "sleep_stress": 13.0, "sleep_need_actual": 480, "sleep_need_baseline": 480, "hrv_status_raw": "BALANCED", "hrv_status": "平衡", "hrv_night": 83, "hrv_5min_high": 128, "hrv_weekly": 88, "hrv_baseline_low": 76, "hrv_baseline_high": 94, "rhr": 43, "rhr_7d": 41, "stress_avg": 24, "stress_max": 90, "steps": 309, "distance_km": 0.2, "calories": 950.0, "has_workout": false, "body_battery": 91, "bb_level": "高", "run_activity": {"name": "常州市 - 长距离跑", "time": "2026-10-24 22:27:43", "period": "夜跑", "course": ["长距离跑", false], "hours_ago": 11.9, "temp_min": 23.0, "temp_max": 28.0, "device": "Forerunner 265", "distance_km": 4.35, "duration": "28分钟", "elapsed": "28分钟", "pace": "6'33\"", "best_pace": "5'43\"", "splits": [{"type": "间歇", "distance_km": 4.35, "duration": "28分钟", "pace": "6'33\""}, {"type": "跑步", "distance_km": 4.22, "duration": "26分钟", "pace": "6'18\""}, {"type": "步行", "distance_km": 0.12, "duration": "1分钟", "pace": "15'27\""}], "main_pace": 393.93011339356013, "avg_hr": 129.0, "max_hr": 143.0, "zones": [{"zone": 1, "sec": 449, "pct": 28}, {"zone": 2, "sec": 1164, "pct": 72}, {"zone": 3, "sec": 0, "pct": 0}, {"zone": 4, "sec": 0, "pct": 0}, {"zone": 5, "sec": 0, "pct": 0}], "avg_cadence": 176, "max_cadence": 194, "stride": 0.87, "vo_osc": 7.3, "gct": 254, "vert_ratio": 8.5, "aerobic_te": 2.6, "anaerobic_te": 0.0, "training_load": 50.5, "calories": 371, "sweat": 453, "elevation_gain": 1.0}, "strength_activity": null, "run_intensity": {"segments": 4, "threshold_pace": "6'53\"", "duration": "25分钟", "hr_avg": 132.7, "hr_max": 143.0, "cad_avg": 182.2, "cad_max": 192.0, "gct_avg": 253.7, "gct_min": 240.0, "air_avg": 75.6, "gct_ratio": 3.36, "osc_avg": 7.5, "stride_avg": 87.9, "hr_recovery": 11.0}, "cardiac_drift": {"verdict": "有", "drift": 13.4, "front_time": "第0~8分钟", "back_time": "第17~26分钟", "front_hr": 122, "back_hr": 135, "front_pace": "6'28\"", "back_pace": "6'19\"", "accel": false}, "end_recovery": {"drop": 35.0, "start_hr": 132, "end_hr": 97}, "plan_name": "5公里 计划", "plan_workouts": [{"date": "2026-10-25", "is_today": true, "name": null, "desc": null, "dur_sec": null, "effect": "INVALID", "rest": true}, {"date": "2026-10-26", "is_today": false, "name": "乳酸阈值", "desc": "29:00@5:05/km", "dur_sec": 2940, "effect": "LACTATE_THRESHOLD", "rest": false}, {"date": "2026-10-27", "is_today": false, "name": "基础训练", "desc": "6:15/km", "dur_sec": 2400, "effect": "AEROBIC_BASE", "rest": false}]}
