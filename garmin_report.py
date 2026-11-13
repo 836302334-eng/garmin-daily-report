@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Garmin 训练日报 · GitHub Actions 版
-支持多段跑步/力量，自动解析力量动作与重量。
+支持多段跑步/力量，深度解析力量动作、重量、次数，并完美中英翻译。
 """
 
 import datetime
@@ -92,7 +92,6 @@ def push_wecom(content: str, webhook: str = None, msgtype: str = "markdown"):
 
 
 def build_push_summary(p: dict, issues: list, report_date: str, file_path: Path) -> str:
-    """生成企业微信推送摘要。"""
     ras = p.get("run_activities") or []
     lines = [f"**Garmin 训练日报 · {report_date}**", ""]
 
@@ -201,8 +200,9 @@ COURSE_MAP = [
     ("放松", "放松跑", False),
 ]
 
-# 常见力量动作英译中字典
+# 超全健身动作英译中字典
 EXERCISE_MAP = {
+    "CARDIO": "心肺/热身",
     "BARBELL_BACK_SQUAT": "杠铃深蹲",
     "BARBELL_BENCH_PRESS": "杠铃卧推",
     "BARBELL_DEADLIFT": "杠铃硬拉",
@@ -217,7 +217,26 @@ EXERCISE_MAP = {
     "LUNGE": "弓步蹲",
     "CRUNCH": "卷腹",
     "SIT_UP": "仰卧起坐",
-    "BURPEE": "波比跳"
+    "BURPEE": "波比跳",
+    "EXTERNAL_ROTATION_AT_90_DEGREE_ABDUCTION": "弹力带90度肩外旋",
+    "SINGLE_LEG_ROMANIAN_DEADLIFT_WITH_DUMBBELL": "单腿哑铃罗马尼亚硬拉",
+    "SINGLE_LEG_HIP_RAISE": "单腿臀桥",
+    "DUMBBELL_BULGARIAN_SPLIT_SQUAT": "哑铃保加利亚单腿蹲",
+    "LATERAL_WALKS_WITH_BAND_AT_ANKLES": "弹力带侧向行走",
+    "ROMANIAN_DEADLIFT": "罗马尼亚硬拉",
+    "BULGARIAN_SPLIT_SQUAT": "保加利亚单腿蹲",
+    "GOBLET_SQUAT": "高脚杯深蹲",
+    "LATERAL_RAISE": "侧平举",
+    "FRONT_RAISE": "前平举",
+    "FACE_PULL": "面拉",
+    "TRICEP_PUSHDOWN": "绳索下压",
+    "HAMMER_CURL": "锤式弯举",
+    "CALF_RAISE": "提踵",
+    "LEG_EXTENSION": "腿屈伸",
+    "LEG_CURL": "腿弯举",
+    "HIP_THRUST": "臀推",
+    "GLUTE_BRIDGE": "臀桥",
+    "RUSSIAN_TWIST": "俄罗斯转体",
 }
 
 
@@ -326,12 +345,11 @@ def parse_run(a, hr_zones):
 
 
 def parse_strength(a, exercise_sets):
-    """解析力量训练：提取动作名称、重量、次数。"""
-    sets_data = defaultdict(list) # 格式: {"杠铃深蹲": ["60.0kg×10次", "65.0kg×8次"]}
+    """深度解析力量训练：提取动作、重量、次数，过滤心率热身。"""
+    sets_data = defaultdict(list)
     
     if exercise_sets:
         for s in exercise_sets:
-            # 排除休息组，只看锻炼组
             if s.get("setType") == "REST":
                 continue
             
@@ -339,28 +357,32 @@ def parse_strength(a, exercise_sets):
             if not ex_list:
                 continue
                 
-            # 取该组的第一个动作名
             ex = ex_list[0]
-            ex_name = ex.get("name") or ex.get("category") or "未知动作"
+            ex_name = ex.get("name") or ex.get("category") or "UNKNOWN"
+            
+            # 过滤掉纯心肺/热身段，不纳入力量动作
+            if ex_name in ("CARDIO", "UNKNOWN"):
+                continue
+                
             cn_name = EXERCISE_MAP.get(ex_name, ex_name)
             
             weight_g = s.get("weight")
             reps = s.get("repetitionCount")
             duration = s.get("duration")
             
-            # 拼接单组详情
-            parts = []
-            if weight_g:
-                parts.append(f"{weight_g / 1000.0:.1f}kg")
-            if reps:
-                parts.append(f"×{reps}次")
-            if not parts and duration:
-                parts.append(f"{int(duration)}秒")
-                
-            if parts:
-                sets_data[cn_name].append("".join(parts))
+            if weight_g and reps:
+                sets_data[cn_name].append(f"{weight_g / 1000.0:.1f}kg×{reps}次")
+            elif weight_g:
+                sets_data[cn_name].append(f"{weight_g / 1000.0:.1f}kg")
+            elif reps:
+                sets_data[cn_name].append(f"{reps}次")
+            elif duration:
+                sets_data[cn_name].append(f"{int(duration)}秒")
             else:
                 sets_data[cn_name].append("1组")
+
+    # 计算真实训练组数（排除纯心肺）
+    real_sets_count = sum(len(v) for v in sets_data.values())
 
     return {
         "name": a.get("activityName"),
@@ -370,7 +392,7 @@ def parse_strength(a, exercise_sets):
         "avg_hr": a.get("averageHR"),
         "max_hr": a.get("maxHR"),
         "calories": round(a["calories"]) if a.get("calories") else None,
-        "set_count": len([s for s in (exercise_sets or []) if s.get("setType") != "REST"]),
+        "set_count": real_sets_count,
         "details": dict(sets_data)
     }
 
