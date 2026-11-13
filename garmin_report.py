@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Garmin 训练日报 · GitHub Actions 版
+Garmin 训练日报 · GitHub Actions 版（多段训练支持版）
 每天北京时间 10:00 自动运行，生成当天日报并推送到企业微信。
 """
 
@@ -19,6 +19,7 @@ from garminconnect import Garmin
 # ==================== 配置区 ====================
 CN_TZ = ZoneInfo("Asia/Shanghai")
 
+# 这里自动读取 GitHub Secrets，绝对不包含明文密码
 EMAIL = os.environ.get("GARMIN_USER", "").strip()
 PASSWORD = os.environ.get("GARMIN_PASS", "").strip()
 WECOM_WEBHOOK = os.environ.get("WECOM_WEBHOOK", "").strip()
@@ -91,16 +92,22 @@ def push_wecom(content: str, webhook: str = None, msgtype: str = "markdown"):
 
 
 def build_push_summary(p: dict, issues: list, report_date: str, file_path: Path) -> str:
-    ra = p.get("run_activity") or {}
+    """生成企业微信推送摘要（支持多段跑步汇总）。"""
+    ras = p.get("run_activities") or []
     lines = [f"**Garmin 训练日报 · {report_date}**", ""]
 
-    if ra:
-        course = ra.get("course")
-        course_tag = f"｜{course[0]}" if course else ""
-        lines.append(
-            f"🏃 {ra.get('distance_km')}km / {ra.get('duration')} "
-            f"/ 配速 {ra.get('pace')}/km / 心率 {ra.get('avg_hr')}{course_tag}"
-        )
+    if ras:
+        if len(ras) == 1:
+            ra = ras[0]
+            course = ra.get("course")
+            course_tag = f"｜{course[0]}" if course else ""
+            lines.append(
+                f"🏃 {ra.get('distance_km')}km / {ra.get('duration')} "
+                f"/ 配速 {ra.get('pace')}/km / 心率 {ra.get('avg_hr')}{course_tag}"
+            )
+        else:
+            total_dist = sum(r.get("distance_km") or 0 for r in ras)
+            lines.append(f"🏃 今日共 {len(ras)} 次跑步，总距离 {total_dist:.2f}km")
     else:
         lines.append("🏃 前 24h 无跑步")
 
@@ -182,8 +189,6 @@ SPLIT_TYPE = {"INTERVAL_WARMUP": "热身", "INTERVAL_ACTIVE": "间歇", "INTERVA
 TE_MAP = {"AEROBIC_BASE": "有氧基础", "ANAEROBIC": "无氧", "VO2MAX": "VO2Max",
           "TEMPO": "节奏跑", "THRESHOLD": "阈值跑", "LACTATE_THRESHOLD": "乳酸阈值",
           "RECOVERY": "恢复", "INVALID": "-"}
-
-# 课程识别：关键词 -> (课程名, 是否有强度主课段)
 COURSE_MAP = [
     ("乳酸阈值", "乳酸阈值", True),
     ("阈值", "阈值训练", True),
@@ -198,7 +203,6 @@ COURSE_MAP = [
 
 
 def identify_course(name):
-    """从活动名识别课程类型，返回 (课程名, 是否有强度) 或 None（自由跑）。"""
     if not name:
         return None
     for kw, cname, intense in COURSE_MAP:
@@ -237,13 +241,11 @@ def parse_run(a, hr_zones):
     d = a.get("distance") or 0
     dur = a.get("duration") or 0
     pace = (dur / (d / 1000)) if d else None
-
     best = None
     if a.get("maxSpeed"):
         best = 1000 / a["maxSpeed"]
-
     splits = []
-    main_pace = None  # 主课段配速（秒/公里），从佳明的"间歇"分段取
+    main_pace = None
     for s in a.get("splitSummaries", []):
         sd = s.get("distance") or 0
         sdur = s.get("duration") or 0
@@ -256,7 +258,6 @@ def parse_run(a, hr_zones):
             "duration": fmt_sec(sdur),
             "pace": fmt_pace(sp),
         })
-
     zones = []
     if hr_zones:
         total = sum(z.get("secsInZone", 0) for z in hr_zones) or 1
@@ -264,7 +265,6 @@ def parse_run(a, hr_zones):
             sec = z.get("secsInZone", 0)
             zones.append({"zone": z.get("zoneNumber"), "sec": int(sec),
                           "pct": round(sec / total * 100)})
-
     hour = None
     try:
         hour = int(a.get("startTimeLocal", "").split(" ")[1].split(":")[0])
@@ -320,11 +320,9 @@ def parse_strength(a, exercise_sets):
 
 
 def analyze_intensity(api, activity_id, main_pace=None):
-    """识别跑步中的主课/高强度段（冲刺/间歇/阈值），统计各指标的最高值与平均值。"""
     detail = safe(lambda: api.get_activity_details(activity_id))
     if not detail:
         return None
-
     idx = {d.get("key"): d.get("metricsIndex") for d in detail.get("metricDescriptors", [])}
 
     def g(m, key):
@@ -334,27 +332,18 @@ def analyze_intensity(api, activity_id, main_pace=None):
     rows = []
     for m in detail.get("activityDetailMetrics", []):
         arr = m.get("metrics", [])
-        rows.append({
-            "t": g(arr, "sumElapsedDuration"),
-            "speed": g(arr, "directSpeed"),
-            "hr": g(arr, "directHeartRate"),
-            "cad": g(arr, "directDoubleCadence"),
-            "gct": g(arr, "directGroundContactTime"),
-            "osc": g(arr, "directVerticalOscillation"),
-            "stride": g(arr, "directStrideLength"),
-        })
-
+        rows.append({"t": g(arr, "sumElapsedDuration"), "speed": g(arr, "directSpeed"),
+                     "hr": g(arr, "directHeartRate"), "cad": g(arr, "directDoubleCadence"),
+                     "gct": g(arr, "directGroundContactTime"), "osc": g(arr, "directVerticalOscillation"),
+                     "stride": g(arr, "directStrideLength")})
     mov = [r for r in rows if r["speed"] and r["speed"] > 0.5]
     if len(mov) < 10:
         return None
-
     avg_speed = sum(r["speed"] for r in mov) / len(mov)
     if main_pace:
-        # 有主课配速：主课段 = 配速不慢于（主课配速 + 20秒/公里）的段
         threshold = 1000 / (main_pace + 20)
     else:
         threshold = max(avg_speed * 1.2, 3.0)
-
     hi = [r for r in mov if r["speed"] >= threshold]
     if len(hi) < 5:
         return None
@@ -422,11 +411,9 @@ def analyze_intensity(api, activity_id, main_pace=None):
 
 
 def analyze_cardiac_drift(api, activity_id):
-    """判断心率漂移。返回 '有'/'无'/'疑似有' 或 None。"""
     detail = safe(lambda: api.get_activity_details(activity_id))
     if not detail:
         return None
-
     idx = {d.get("key"): d.get("metricsIndex") for d in detail.get("metricDescriptors", [])}
 
     def g(m, key):
@@ -436,22 +423,16 @@ def analyze_cardiac_drift(api, activity_id):
     rows = []
     for m in detail.get("activityDetailMetrics", []):
         arr = m.get("metrics", [])
-        rows.append({
-            "t": g(arr, "sumElapsedDuration"),
-            "speed": g(arr, "directSpeed"),
-            "hr": g(arr, "directHeartRate"),
-        })
-
+        rows.append({"t": g(arr, "sumElapsedDuration"), "speed": g(arr, "directSpeed"),
+                     "hr": g(arr, "directHeartRate")})
     mov = [r for r in rows if r["speed"] and r["speed"] > 0.5]
     if len(mov) < 30:
         return None
-
     avg = sum(r["speed"] for r in mov) / len(mov)
     hi_th = max(avg * 1.2, 3.0)
     steady = [r for r in mov if 2.0 <= r["speed"] < hi_th and r["hr"]]
     if len(steady) < 20:
         return None
-
     n = len(steady)
     front = steady[:n // 3]
     back = steady[-(n // 3):]
@@ -474,13 +455,10 @@ def analyze_cardiac_drift(api, activity_id):
     hb = hravg(back)
     pf = spdavg(front)
     pb = spdavg(back)
-
     if hf is None or hb is None:
         return None
-
     drift = round(hb - hf, 1)
     accel = bool(pb and pf and pb > pf * 1.03)
-
     if accel:
         verdict = "无"
     elif drift >= 8:
@@ -489,7 +467,6 @@ def analyze_cardiac_drift(api, activity_id):
         verdict = "疑似有"
     else:
         verdict = "无"
-
     return {
         "verdict": verdict,
         "drift": drift,
@@ -504,7 +481,6 @@ def analyze_cardiac_drift(api, activity_id):
 
 
 def analyze_end_recovery(api, activity_id):
-    """训练末尾彻底降速后 2 分钟，心率下降的量（心率恢复指标）。"""
     detail = safe(lambda: api.get_activity_details(activity_id))
     if not detail:
         return None
@@ -544,9 +520,9 @@ def parse(data, api=None, report_date=None):
     report_date = report_date or datetime.date.today().isoformat()
     today = datetime.date.fromisoformat(report_date)
 
-    # --- 训练状态 ---
     ts = data["training_status"] or {}
-    d = ts.get("mostRecentTrainingStatus", {}).get("latestTrainingStatusData", {})
+    mts = ts.get("mostRecentTrainingStatus") or {}
+    d = mts.get("latestTrainingStatusData") or {}
     dev = list(d.values())[0] if d else {}
     p["training_status"] = TS_MAP.get(dev.get("trainingStatus"), "无")
     p["fitness_trend"] = FIT_TREND.get(dev.get("fitnessTrend"), "未知")
@@ -557,7 +533,7 @@ def parse(data, api=None, report_date=None):
     p["acute_load"] = acwr.get("dailyTrainingLoadAcute")
     p["chronic_load"] = acwr.get("dailyTrainingLoadChronic")
     p["vo2max"] = ((ts.get("mostRecentVO2Max") or {}).get("generic") or {}).get("vo2MaxPreciseValue")
-    lb = ts.get("mostRecentTrainingLoadBalance", {}).get("metricsTrainingLoadBalanceDTOMap", {})
+    lb = (ts.get("mostRecentTrainingLoadBalance") or {}).get("metricsTrainingLoadBalanceDTOMap", {})
     lbd = list(lb.values())[0] if lb else {}
     p["load_balance"] = lbd.get("trainingBalanceFeedbackPhrase")
     p["load_alow"] = lbd.get("monthlyLoadAerobicLow")
@@ -569,10 +545,9 @@ def parse(data, api=None, report_date=None):
     p["load_ana"] = lbd.get("monthlyLoadAnaerobic")
     p["load_ana_min"] = lbd.get("monthlyLoadAnaerobicTargetMin")
     p["load_ana_max"] = lbd.get("monthlyLoadAnaerobicTargetMax")
-    devs = ts.get("mostRecentTrainingStatus", {}).get("recordedDevices", [])
+    devs = mts.get("recordedDevices", [])
     p["device"] = devs[0].get("deviceName") if devs else None
 
-    # --- 睡眠 ---
     sl = (data["sleep"] or {}).get("dailySleepDTO", {})
     sub = sl.get("sleepScores") or {}
     p["sleep_score"] = sub.get("overall", {}).get("value")
@@ -602,7 +577,6 @@ def parse(data, api=None, report_date=None):
     p["sleep_need_actual"] = need.get("actual")
     p["sleep_need_baseline"] = need.get("baseline")
 
-    # --- HRV ---
     hs = (data["hrv"] or {}).get("hrvSummary", {})
     p["hrv_status_raw"] = hs.get("status")
     p["hrv_status"] = HRV_STATUS.get(hs.get("status"), hs.get("status"))
@@ -613,7 +587,6 @@ def parse(data, api=None, report_date=None):
     p["hrv_baseline_low"] = bl.get("balancedLow")
     p["hrv_baseline_high"] = bl.get("balancedUpper")
 
-    # --- 身体 ---
     p["rhr"] = (data["summary"] or {}).get("restingHeartRate")
     p["rhr_7d"] = (data["summary"] or {}).get("lastSevenDaysAvgRestingHeartRate")
     p["stress_avg"] = (data["summary"] or {}).get("averageStressLevel")
@@ -633,24 +606,20 @@ def parse(data, api=None, report_date=None):
             p["body_battery"] = max(v[1] for v in vals if v[1] is not None)
             p["bb_level"] = "高" if p["body_battery"] >= 75 else ("中等" if p["body_battery"] >= 50 else "低")
 
-    # --- 最近活动（跑步 + 力量，24 小时窗口）---
-    p["run_activity"] = None
-    p["strength_activity"] = None
-    p["run_intensity"] = None
-    p["cardiac_drift"] = None
-    p["end_recovery"] = None
-
+    # --- 多段活动识别 ---
+    p["run_activities"] = []
+    p["strength_activities"] = []
     acts = data.get("activities") or []
-    run_act = None
-    str_act = None
+    run_acts = []
+    str_acts = []
     for a in acts:
         tk = (a.get("activityType") or {}).get("typeKey")
-        if tk == "running" and run_act is None:
-            run_act = a
-        elif tk == "strength_training" and str_act is None:
-            str_act = a
+        if tk == "running":
+            run_acts.append(a)
+        elif tk == "strength_training":
+            str_acts.append(a)
 
-    if run_act:
+    for run_act in run_acts:
         ha = hours_ago(run_act)
         if ha is not None and ha <= 24:
             zones = None
@@ -658,20 +627,20 @@ def parse(data, api=None, report_date=None):
                 zones = safe(lambda: api.get_activity_hr_in_timezones(run_act.get("activityId")))
             r = parse_run(run_act, zones)
             r["device"] = p["device"]
-            p["run_activity"] = r
             if api is not None:
-                p["run_intensity"] = analyze_intensity(api, run_act.get("activityId"), r.get("main_pace"))
-                p["cardiac_drift"] = analyze_cardiac_drift(api, run_act.get("activityId"))
-                p["end_recovery"] = analyze_end_recovery(api, run_act.get("activityId"))
+                r["intensity"] = analyze_intensity(api, run_act.get("activityId"), r.get("main_pace"))
+                r["cardiac_drift"] = analyze_cardiac_drift(api, run_act.get("activityId"))
+                r["end_recovery"] = analyze_end_recovery(api, run_act.get("activityId"))
+            p["run_activities"].append(r)
 
-    if str_act:
+    for str_act in str_acts:
         ha = hours_ago(str_act)
         if ha is not None and ha <= 24:
             sets = None
             if api is not None:
                 sets = safe(lambda: api.get_activity_exercise_sets(str_act.get("activityId")))
                 sets = (sets or {}).get("exerciseSets")
-            p["strength_activity"] = parse_strength(str_act, sets)
+            p["strength_activities"].append(parse_strength(str_act, sets))
 
     # --- Garmin Coach 未来 48 小时训练计划 ---
     p["plan_name"] = None
@@ -753,114 +722,124 @@ def build_report(p, issues, date):
     # ---------- 第一大类：跑步训练数据 ----------
     L.append("")
     L.append("【第一大类：跑步训练数据】")
-    ra = p["run_activity"]
-    if ra:
-        L.append("")
-        L.append("1. 基础环境与时间指标")
-        L.append(f"  · 日期与时间：{ra['time']}（{ra['period']}）")
-        if ra.get("course"):
-            L.append(f"  · 本次课程：{ra['course'][0]}")
-        L.append(f"  · 天气：温度 {ra['temp_min']}~{ra['temp_max']}℃　湿度（）　风速/降雨（）")
-        L.append(f"  · 装备：手表 {ra['device'] or '-'}　跑鞋型号（）")
-        L.append("")
-        L.append("2. 核心配速与距离指标")
-        L.append(f"  · 总距离 {ra['distance_km']}km　总时长 {ra['duration']}（含暂停 {ra['elapsed']}）")
-        L.append(f"  · 平均配速 {ra['pace']}/km　最快瞬时配速 {ra['best_pace']}/km")
-        if ra["splits"]:
-            L.append("  · 分段配速：")
-            for s in ra["splits"]:
-                L.append(f"      - {s['type']}：{s['distance_km']}km　{s['duration']}　{s['pace']}/km")
-        else:
-            L.append("  · 分段配速：（）")
-        L.append("")
-        L.append("3. 心肺与心率指标")
-        L.append(f"  · 平均心率 {ra['avg_hr']} / 最高心率 {ra['max_hr']}")
-        if ra["zones"]:
-            zt = "　".join(f"Z{z['zone']} {z['sec']}秒({z['pct']}%)" for z in ra["zones"])
-            L.append(f"  · 心率区间：{zt}")
-        else:
-            L.append("  · 心率区间：（）")
-        dr = p["cardiac_drift"]
-        if isinstance(dr, dict):
-            if dr["verdict"] in ("有", "疑似有"):
-                L.append(f"  · 心率漂移：{dr['verdict']}（漂移 +{dr['drift']} bpm）")
-                L.append(f"    - 前段 {dr['front_time']}：平均心率 {dr['front_hr']} bpm，配速 {dr['front_pace']}/km")
-                L.append(f"    - 后段 {dr['back_time']}：平均心率 {dr['back_hr']} bpm，配速 {dr['back_pace']}/km")
+    ras = p["run_activities"]
+    if ras:
+        for run_no, ra in enumerate(ras):
+            if len(ras) > 1:
+                L.append("")
+                L.append(f"—— 跑步训练 {run_no + 1}：{ra['name']} ——")
             else:
-                L.append(f"  · 心率漂移：{dr['verdict']}")
-        else:
-            L.append(f"  · 心率漂移：{dr if dr else '（）'}")
-        L.append("")
-        L.append("4. 跑姿与生物力学指标")
-        L.append(f"  · 平均步频 {ra['avg_cadence']} / 最高步频 {ra['max_cadence']} 步/分")
-        L.append(f"  · 平均步幅 {ra['stride']}m")
-        L.append(f"  · 垂直振幅 {ra['vo_osc']}cm　垂直步幅比 {ra['vert_ratio']}%")
-        L.append(f"  · 触地时间 {ra['gct']}ms")
-        L.append("")
-        L.append("5. 负荷与恢复指标")
-        L.append(f"  · 训练效果：有氧 {ra['aerobic_te']} / 无氧 {ra['anaerobic_te']}")
-        L.append(f"  · 运动负荷 {ra['training_load']}")
-        er = p["end_recovery"]
-        if er:
-            L.append(f"  · 末尾降速恢复：2 分钟心率下降 {er['drop']} bpm（{er['start_hr']} → {er['end_hr']}）")
-        L.append(f"  · 卡路里 {ra['calories']}　预估汗液流失 {ra['sweat'] if ra['sweat'] else '（）'}ml")
-        L.append("")
-        course = ra.get("course")
-        if course and course[1]:
-            L.append(f"6. 主课段专项分析（{course[0]}课程，已去除热身/冷身）")
-        else:
-            L.append("6. 高强度段分析（冲刺/间歇/阈值）")
-        ri = p["run_intensity"]
-        if ri:
-            L.append(f"  · 主课段：识别出 {ri['segments']} 个强度段（配速快于 {ri['threshold_pace']}/km），累计 {ri['duration']}")
-            L.append(f"  · 步频：平均 {ri['cad_avg']} / 最高 {ri['cad_max']} 步/分")
-            L.append(f"  · 心率：平均 {ri['hr_avg']} / 最高 {ri['hr_max']} bpm")
-            L.append(f"  · 触地时间：平均 {ri['gct_avg']}ms / 最短 {ri['gct_min']}ms　腾空时间 {ri['air_avg']}ms")
-            L.append(f"  · 触地腾空比：{ri['gct_ratio']}")
-            L.append(f"  · 垂直振幅 {ri['osc_avg']}cm　步幅 {ri['stride_avg']}cm")
-            if ri['hr_recovery']:
-                L.append(f"  · 心率恢复速度：峰值后 2 分钟下降 {ri['hr_recovery']} bpm")
-        else:
-            if course and not course[1]:
-                L.append(f"  · （本次为{course[0]}课程，匀速跑，无高强度主课段）")
+                L.append("")
+            L.append("1. 基础环境与时间指标")
+            L.append(f"  · 日期与时间：{ra['time']}（{ra['period']}）")
+            if ra.get("course"):
+                L.append(f"  · 本次课程：{ra['course'][0]}")
+            L.append(f"  · 天气：温度 {ra['temp_min']}~{ra['temp_max']}℃　湿度（）　风速/降雨（）")
+            L.append(f"  · 装备：手表 {ra['device'] or '-'}　跑鞋型号（）")
+            L.append("")
+            L.append("2. 核心配速与距离指标")
+            L.append(f"  · 总距离 {ra['distance_km']}km　总时长 {ra['duration']}（含暂停 {ra['elapsed']}）")
+            L.append(f"  · 平均配速 {ra['pace']}/km　最快瞬时配速 {ra['best_pace']}/km")
+            if ra["splits"]:
+                L.append("  · 分段配速：")
+                for s in ra["splits"]:
+                    L.append(f"      - {s['type']}：{s['distance_km']}km　{s['duration']}　{s['pace']}/km")
             else:
-                L.append("  · （本次无高强度段，为匀速跑）")
-        L.append("")
-        L.append("7. 主观与伤病预警（需手动填写）")
-        L.append("  · 旧伤反馈：左脚踝内侧胫骨后肌腱是否不适（）时间点（）评分0-10（）继续/降速/停止（）")
-        L.append("  · 其他不适：胫骨前肌（）右跟腱（）腰椎（）膝盖（）")
-        L.append("  · 体感：轻松/有点累/很累（）　抽筋前兆（）")
-        L.append("  · 跑后处理：冰敷15分钟（）　脚踝等长收缩（）")
+                L.append("  · 分段配速：（）")
+            L.append("")
+            L.append("3. 心肺与心率指标")
+            L.append(f"  · 平均心率 {ra['avg_hr']} / 最高心率 {ra['max_hr']}")
+            if ra["zones"]:
+                zt = "　".join(f"Z{z['zone']} {z['sec']}秒({z['pct']}%)" for z in ra["zones"])
+                L.append(f"  · 心率区间：{zt}")
+            else:
+                L.append("  · 心率区间：（）")
+            dr = ra.get("cardiac_drift")
+            if isinstance(dr, dict):
+                if dr["verdict"] in ("有", "疑似有"):
+                    L.append(f"  · 心率漂移：{dr['verdict']}（漂移 +{dr['drift']} bpm）")
+                    L.append(f"    - 前段 {dr['front_time']}：平均心率 {dr['front_hr']} bpm，配速 {dr['front_pace']}/km")
+                    L.append(f"    - 后段 {dr['back_time']}：平均心率 {dr['back_hr']} bpm，配速 {dr['back_pace']}/km")
+                else:
+                    L.append(f"  · 心率漂移：{dr['verdict']}")
+            else:
+                L.append(f"  · 心率漂移：{dr if dr else '（）'}")
+            L.append("")
+            L.append("4. 跑姿与生物力学指标")
+            L.append(f"  · 平均步频 {ra['avg_cadence']} / 最高步频 {ra['max_cadence']} 步/分")
+            L.append(f"  · 平均步幅 {ra['stride']}m")
+            L.append(f"  · 垂直振幅 {ra['vo_osc']}cm　垂直步幅比 {ra['vert_ratio']}%")
+            L.append(f"  · 触地时间 {ra['gct']}ms")
+            L.append("")
+            L.append("5. 负荷与恢复指标")
+            L.append(f"  · 训练效果：有氧 {ra['aerobic_te']} / 无氧 {ra['anaerobic_te']}")
+            L.append(f"  · 运动负荷 {ra['training_load']}")
+            er = ra.get("end_recovery")
+            if er:
+                L.append(f"  · 末尾降速恢复：2 分钟心率下降 {er['drop']} bpm（{er['start_hr']} → {er['end_hr']}）")
+            L.append(f"  · 卡路里 {ra['calories']}　预估汗液流失 {ra['sweat'] if ra['sweat'] else '（）'}ml")
+            L.append("")
+            course = ra.get("course")
+            if course and course[1]:
+                L.append(f"6. 主课段专项分析（{course[0]}课程，已去除热身/冷身）")
+            else:
+                L.append("6. 高强度段分析（冲刺/间歇/阈值）")
+            ri = ra.get("intensity")
+            if ri:
+                L.append(f"  · 主课段：识别出 {ri['segments']} 个强度段（配速快于 {ri['threshold_pace']}/km），累计 {ri['duration']}")
+                L.append(f"  · 步频：平均 {ri['cad_avg']} / 最高 {ri['cad_max']} 步/分")
+                L.append(f"  · 心率：平均 {ri['hr_avg']} / 最高 {ri['hr_max']} bpm")
+                L.append(f"  · 触地时间：平均 {ri['gct_avg']}ms / 最短 {ri['gct_min']}ms　腾空时间 {ri['air_avg']}ms")
+                L.append(f"  · 触地腾空比：{ri['gct_ratio']}")
+                L.append(f"  · 垂直振幅 {ri['osc_avg']}cm　步幅 {ri['stride_avg']}cm")
+                if ri['hr_recovery']:
+                    L.append(f"  · 心率恢复速度：峰值后 2 分钟下降 {ri['hr_recovery']} bpm")
+            else:
+                if course and not course[1]:
+                    L.append(f"  · （本次为{course[0]}课程，匀速跑，无高强度主课段）")
+                else:
+                    L.append("  · （本次无高强度段，为匀速跑）")
+            L.append("")
+            L.append("7. 主观与伤病预警（需手动填写）")
+            L.append("  · 旧伤反馈：左脚踝内侧胫骨后肌腱是否不适（）时间点（）评分0-10（）继续/降速/停止（）")
+            L.append("  · 其他不适：胫骨前肌（）右跟腱（）腰椎（）膝盖（）")
+            L.append("  · 体感：轻松/有点累/很累（）　抽筋前兆（）")
+            L.append("  · 跑后处理：冰敷15分钟（）　脚踝等长收缩（）")
     else:
         L.append("（前 24 小时无跑步记录）")
 
     # ---------- 第二大类：力量训练数据 ----------
     L.append("")
     L.append("【第二大类：力量训练数据】")
-    sa = p["strength_activity"]
-    if sa:
-        L.append("")
-        L.append("1. 基础训练指标")
-        L.append(f"  · 日期：{sa['time']}　总时长 {sa['duration']}　总组数 {sa['set_count']}　总消耗 {sa['calories']}千卡")
-        L.append("")
-        L.append("2. 核心动作详细指标（需手动填写）")
-        L.append("  · 深蹲：重量kg/次数/组数/组间休息（）")
-        L.append("  · 硬拉：（）")
-        L.append("  · 卧推：（）")
-        L.append("  · 引体向上：每组次数/是否负重/组数（）")
-        L.append("  · 平板支撑：每组时长秒/组数（）")
-        L.append("  · 弹力带90度肩外旋：阻力kg/次数/组数（）")
-        L.append("  · 其他动作：（）")
-        L.append("")
-        L.append("3. 容量与负荷指标（需手动）")
-        L.append("  · 总容量（kg×次数×组数）：（）")
-        L.append("  · 运动负荷：（）")
-        L.append("")
-        L.append("4. 主观与伤病预警（需手动填写）")
-        L.append("  · 动作降级情况：是否降重量/降到多少kg（）")
-        L.append("  · 腰部反馈：深蹲/硬拉腰部压力或牵扯感（）")
-        L.append("  · 脚踝反馈：负重时左脚踝内侧隐痛（）")
-        L.append("  · 执行感受：轻松/正常/力有不逮（）")
+    sas = p["strength_activities"]
+    if sas:
+        for si, sa in enumerate(sas):
+            if len(sas) > 1:
+                L.append("")
+                L.append(f"—— 力量训练 {si + 1}：{sa['name']} ——")
+            else:
+                L.append("")
+            L.append("1. 基础训练指标")
+            L.append(f"  · 日期：{sa['time']}　总时长 {sa['duration']}　总组数 {sa['set_count']}　总消耗 {sa['calories']}千卡")
+            L.append("")
+            L.append("2. 核心动作详细指标（需手动填写）")
+            L.append("  · 深蹲：重量kg/次数/组数/组间休息（）")
+            L.append("  · 硬拉：（）")
+            L.append("  · 卧推：（）")
+            L.append("  · 引体向上：每组次数/是否负重/组数（）")
+            L.append("  · 平板支撑：每组时长秒/组数（）")
+            L.append("  · 弹力带90度肩外旋：阻力kg/次数/组数（）")
+            L.append("  · 其他动作：（）")
+            L.append("")
+            L.append("3. 容量与负荷指标（需手动）")
+            L.append("  · 总容量（kg×次数×组数）：（）")
+            L.append("  · 运动负荷：（）")
+            L.append("")
+            L.append("4. 主观与伤病预警（需手动填写）")
+            L.append("  · 动作降级情况：是否降重量/降到多少kg（）")
+            L.append("  · 腰部反馈：深蹲/硬拉腰部压力或牵扯感（）")
+            L.append("  · 脚踝反馈：负重时左脚踝内侧隐痛（）")
+            L.append("  · 执行感受：轻松/正常/力有不逮（）")
     else:
         L.append("（前 24 小时无力量训练记录）")
 
