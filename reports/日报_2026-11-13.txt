@@ -9,22 +9,16 @@ Garmin 训练日报 · 2026-11-13
 
 —— 力量训练 1：力训 C 只练上肢 ——
 1. 基础训练指标
-  · 日期：2026-11-12 20:44:58　总时长 40分钟　总组数 34　总消耗 202千卡
+  · 日期：2026-11-12 20:44:58　总时长 40分钟　总组数 19　总消耗 202千卡
 
-2. 核心动作详细指标（需手动填写）
-  · 深蹲：重量kg/次数/组数/组间休息（）
-  · 硬拉：（）
-  · 卧推：（）
-  · 引体向上：每组次数/是否负重/组数（）
-  · 平板支撑：每组时长秒/组数（）
-  · 弹力带90度肩外旋：阻力kg/次数/组数（）
-  · 其他动作：（）
+2. 动作与重量详细指标
+  · CARDIO：17秒, 17秒, 7秒, 358秒, 556秒
+  · EXTERNAL_ROTATION_AT_90_DEGREE_ABDUCTION：5.0kg×24次, 5.0kg×24次, 5.0kg×24次
+  · 杠铃卧推：20.0kg×10次, 40.0kg×5次, 50.0kg×3次, 60.0kg×5次, 60.0kg×6次, 60.0kg×5次
+  · 引体向上：×8次, ×8次, ×7次
+  · 平板支撑：60秒, 60秒
 
-3. 容量与负荷指标（需手动）
-  · 总容量（kg×次数×组数）：（）
-  · 运动负荷：（）
-
-4. 主观与伤病预警（需手动填写）
+3. 主观与伤病预警（需手动填写）
   · 动作降级情况：是否降重量/降到多少kg（）
   · 腰部反馈：深蹲/硬拉腰部压力或牵扯感（）
   · 脚踝反馈：负重时左脚踝内侧隐痛（）
@@ -32,22 +26,17 @@ Garmin 训练日报 · 2026-11-13
 
 —— 力量训练 2：居家睡前 a ——
 1. 基础训练指标
-  · 日期：2026-11-12 20:10:20　总时长 33分钟　总组数 31　总消耗 163千卡
+  · 日期：2026-11-12 20:10:20　总时长 33分钟　总组数 16　总消耗 163千卡
 
-2. 核心动作详细指标（需手动填写）
-  · 深蹲：重量kg/次数/组数/组间休息（）
-  · 硬拉：（）
-  · 卧推：（）
-  · 引体向上：每组次数/是否负重/组数（）
-  · 平板支撑：每组时长秒/组数（）
-  · 弹力带90度肩外旋：阻力kg/次数/组数（）
-  · 其他动作：（）
+2. 动作与重量详细指标
+  · CARDIO：921秒
+  · SINGLE_LEG_ROMANIAN_DEADLIFT_WITH_DUMBBELL：4.0kg×10次, 4.0kg×10次, 4.0kg×10次, 4.0kg×10次
+  · SINGLE_LEG_HIP_RAISE：×10次, ×10次, ×10次, ×10次
+  · DUMBBELL_BULGARIAN_SPLIT_SQUAT：×8次, ×8次, ×8次, ×8次
+  · 平板支撑：50秒, 50秒
+  · LATERAL_WALKS_WITH_BAND_AT_ANKLES：8秒
 
-3. 容量与负荷指标（需手动）
-  · 总容量（kg×次数×组数）：（）
-  · 运动负荷：（）
-
-4. 主观与伤病预警（需手动填写）
+3. 主观与伤病预警（需手动填写）
   · 动作降级情况：是否降重量/降到多少kg（）
   · 腰部反馈：深蹲/硬拉腰部压力或牵扯感（）
   · 脚踝反馈：负重时左脚踝内侧隐痛（）
@@ -94,4 +83,4 @@ Garmin 训练日报 · 2026-11-13
   （今天及未来 48 小时没有训练安排）
 
 【原始数据（可复制导出）】
-{"training_status": "无", "fitness_trend": "未知", "acwr_ratio": null, "acwr_status_raw": null, "acwr_status": null, "acute_load": null, "chronic_load": null, "vo2max": null, "load_balance": null, "load_alow": null, "load_alow_min": null, "load_alow_max": null, "load_ahigh": null, "load_ahigh_min": null, "load_ahigh_max": null, "load_ana": null, "load_ana_min": null, "load_ana_max": null, "device": null, "sleep_score": 80, "sleep_qualifier_raw": "GOOD", "sleep_qualifier": "良好", "sleep_duration": "5小时57分", "nap": "0分钟", "deep": "1小时28分", "light": "3小时3分", "rem": "1小时26分", "awake": "0分钟", "sleep_subs": {"时长": "一般", "压力": "优秀", "清醒次数": "优秀", "REM占比": "24% 优秀", "浅睡占比": "51% 优秀", "深睡占比": "25% 优秀", "不安": "优秀"}, "spo2_avg": 96.0, "spo2_low": 85, "respiration": 13.0, "sleep_hr": 48.0, "sleep_stress": 13.0, "sleep_need_actual": 460, "sleep_need_baseline": 480, "hrv_status_raw": "UNBALANCED", "hrv_status": "失衡", "hrv_night": 78, "hrv_5min_high": 109, "hrv_weekly": 75, "hrv_baseline_low": 76, "hrv_baseline_high": 96, "rhr": 43, "rhr_7d": 43, "stress_avg": 17, "stress_max": 90, "steps": 3593, "distance_km": 2.8, "calories": 1030.0, "has_workout": false, "body_battery": 98, "bb_level": "高", "run_activities": [], "strength_activities": [{"name": "力训 C 只练上肢", "time": "2026-11-12 20:44:58", "hours_ago": 13.9, "duration": "40分钟", "avg_hr": 90.0, "max_hr": 126.0, "calories": 202, "set_count": 34}, {"name": "居家睡前 a", "time": "2026-11-12 20:10:20", "hours_ago": 14.5, "duration": "33分钟", "avg_hr": 88.0, "max_hr": 114.0, "calories": 163, "set_count": 31}], "plan_name": "5公里 计划", "plan_workouts": []}
+{"training_status": "无", "fitness_trend": "未知", "acwr_ratio": null, "acwr_status_raw": null, "acwr_status": null, "acute_load": null, "chronic_load": null, "vo2max": null, "load_balance": null, "load_alow": null, "load_alow_min": null, "load_alow_max": null, "load_ahigh": null, "load_ahigh_min": null, "load_ahigh_max": null, "load_ana": null, "load_ana_min": null, "load_ana_max": null, "device": null, "sleep_score": 80, "sleep_qualifier_raw": "GOOD", "sleep_qualifier": "良好", "sleep_duration": "5小时57分", "nap": "0分钟", "deep": "1小时28分", "light": "3小时3分", "rem": "1小时26分", "awake": "0分钟", "sleep_subs": {"时长": "一般", "压力": "优秀", "清醒次数": "优秀", "REM占比": "24% 优秀", "浅睡占比": "51% 优秀", "深睡占比": "25% 优秀", "不安": "优秀"}, "spo2_avg": 96.0, "spo2_low": 85, "respiration": 13.0, "sleep_hr": 48.0, "sleep_stress": 13.0, "sleep_need_actual": 460, "sleep_need_baseline": 480, "hrv_status_raw": "UNBALANCED", "hrv_status": "失衡", "hrv_night": 78, "hrv_5min_high": 109, "hrv_weekly": 75, "hrv_baseline_low": 76, "hrv_baseline_high": 96, "rhr": 43, "rhr_7d": 43, "stress_avg": 17, "stress_max": 90, "steps": 3593, "distance_km": 2.8, "calories": 1030.0, "has_workout": false, "body_battery": 98, "bb_level": "高", "run_activities": [], "strength_activities": [{"name": "力训 C 只练上肢", "time": "2026-11-12 20:44:58", "hours_ago": 14.5, "duration": "40分钟", "avg_hr": 90.0, "max_hr": 126.0, "calories": 202, "set_count": 19, "details": {"CARDIO": ["17秒", "17秒", "7秒", "358秒", "556秒"], "EXTERNAL_ROTATION_AT_90_DEGREE_ABDUCTION": ["5.0kg×24次", "5.0kg×24次", "5.0kg×24次"], "杠铃卧推": ["20.0kg×10次", "40.0kg×5次", "50.0kg×3次", "60.0kg×5次", "60.0kg×6次", "60.0kg×5次"], "引体向上": ["×8次", "×8次", "×7次"], "平板支撑": ["60秒", "60秒"]}}, {"name": "居家睡前 a", "time": "2026-11-12 20:10:20", "hours_ago": 15.1, "duration": "33分钟", "avg_hr": 88.0, "max_hr": 114.0, "calories": 163, "set_count": 16, "details": {"CARDIO": ["921秒"], "SINGLE_LEG_ROMANIAN_DEADLIFT_WITH_DUMBBELL": ["4.0kg×10次", "4.0kg×10次", "4.0kg×10次", "4.0kg×10次"], "SINGLE_LEG_HIP_RAISE": ["×10次", "×10次", "×10次", "×10次"], "DUMBBELL_BULGARIAN_SPLIT_SQUAT": ["×8次", "×8次", "×8次", "×8次"], "平板支撑": ["50秒", "50秒"], "LATERAL_WALKS_WITH_BAND_AT_ANKLES": ["8秒"]}}], "plan_name": "5公里 计划", "plan_workouts": []}
