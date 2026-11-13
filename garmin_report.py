@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Garmin 训练日报 · GitHub Actions 版（多段训练支持版）
-每天北京时间 10:00 自动运行，生成当天日报并推送到企业微信。
+Garmin 训练日报 · GitHub Actions 版
+支持多段跑步/力量，自动解析力量动作与重量。
 """
 
 import datetime
@@ -10,6 +10,7 @@ import logging
 import os
 import re
 import sys
+from collections import defaultdict
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -19,7 +20,6 @@ from garminconnect import Garmin
 # ==================== 配置区 ====================
 CN_TZ = ZoneInfo("Asia/Shanghai")
 
-# 这里自动读取 GitHub Secrets，绝对不包含明文密码
 EMAIL = os.environ.get("GARMIN_USER", "").strip()
 PASSWORD = os.environ.get("GARMIN_PASS", "").strip()
 WECOM_WEBHOOK = os.environ.get("WECOM_WEBHOOK", "").strip()
@@ -92,7 +92,7 @@ def push_wecom(content: str, webhook: str = None, msgtype: str = "markdown"):
 
 
 def build_push_summary(p: dict, issues: list, report_date: str, file_path: Path) -> str:
-    """生成企业微信推送摘要（支持多段跑步汇总）。"""
+    """生成企业微信推送摘要。"""
     ras = p.get("run_activities") or []
     lines = [f"**Garmin 训练日报 · {report_date}**", ""]
 
@@ -201,6 +201,25 @@ COURSE_MAP = [
     ("放松", "放松跑", False),
 ]
 
+# 常见力量动作英译中字典
+EXERCISE_MAP = {
+    "BARBELL_BACK_SQUAT": "杠铃深蹲",
+    "BARBELL_BENCH_PRESS": "杠铃卧推",
+    "BARBELL_DEADLIFT": "杠铃硬拉",
+    "PULL_UP": "引体向上",
+    "PUSH_UP": "俯卧撑",
+    "PLANK": "平板支撑",
+    "DUMBBELL_BICEPS_CURL": "哑铃弯举",
+    "DUMBBELL_SHOULDER_PRESS": "哑铃肩推",
+    "DUMBBELL_ROW": "哑铃划船",
+    "LAT_PULLDOWN": "高位下拉",
+    "LEG_PRESS": "腿举",
+    "LUNGE": "弓步蹲",
+    "CRUNCH": "卷腹",
+    "SIT_UP": "仰卧起坐",
+    "BURPEE": "波比跳"
+}
+
 
 def identify_course(name):
     if not name:
@@ -307,6 +326,42 @@ def parse_run(a, hr_zones):
 
 
 def parse_strength(a, exercise_sets):
+    """解析力量训练：提取动作名称、重量、次数。"""
+    sets_data = defaultdict(list) # 格式: {"杠铃深蹲": ["60.0kg×10次", "65.0kg×8次"]}
+    
+    if exercise_sets:
+        for s in exercise_sets:
+            # 排除休息组，只看锻炼组
+            if s.get("setType") == "REST":
+                continue
+            
+            ex_list = s.get("exercises") or []
+            if not ex_list:
+                continue
+                
+            # 取该组的第一个动作名
+            ex = ex_list[0]
+            ex_name = ex.get("name") or ex.get("category") or "未知动作"
+            cn_name = EXERCISE_MAP.get(ex_name, ex_name)
+            
+            weight_g = s.get("weight")
+            reps = s.get("repetitionCount")
+            duration = s.get("duration")
+            
+            # 拼接单组详情
+            parts = []
+            if weight_g:
+                parts.append(f"{weight_g / 1000.0:.1f}kg")
+            if reps:
+                parts.append(f"×{reps}次")
+            if not parts and duration:
+                parts.append(f"{int(duration)}秒")
+                
+            if parts:
+                sets_data[cn_name].append("".join(parts))
+            else:
+                sets_data[cn_name].append("1组")
+
     return {
         "name": a.get("activityName"),
         "time": a.get("startTimeLocal"),
@@ -315,7 +370,8 @@ def parse_strength(a, exercise_sets):
         "avg_hr": a.get("averageHR"),
         "max_hr": a.get("maxHR"),
         "calories": round(a["calories"]) if a.get("calories") else None,
-        "set_count": len(exercise_sets or []),
+        "set_count": len([s for s in (exercise_sets or []) if s.get("setType") != "REST"]),
+        "details": dict(sets_data)
     }
 
 
@@ -822,20 +878,16 @@ def build_report(p, issues, date):
             L.append("1. 基础训练指标")
             L.append(f"  · 日期：{sa['time']}　总时长 {sa['duration']}　总组数 {sa['set_count']}　总消耗 {sa['calories']}千卡")
             L.append("")
-            L.append("2. 核心动作详细指标（需手动填写）")
-            L.append("  · 深蹲：重量kg/次数/组数/组间休息（）")
-            L.append("  · 硬拉：（）")
-            L.append("  · 卧推：（）")
-            L.append("  · 引体向上：每组次数/是否负重/组数（）")
-            L.append("  · 平板支撑：每组时长秒/组数（）")
-            L.append("  · 弹力带90度肩外旋：阻力kg/次数/组数（）")
-            L.append("  · 其他动作：（）")
+            L.append("2. 动作与重量详细指标")
+            details = sa.get("details", {})
+            if details:
+                for ex_name, sets_list in details.items():
+                    sets_str = ", ".join(sets_list)
+                    L.append(f"  · {ex_name}：{sets_str}")
+            else:
+                L.append("  · （本次训练未记录具体动作和重量）")
             L.append("")
-            L.append("3. 容量与负荷指标（需手动）")
-            L.append("  · 总容量（kg×次数×组数）：（）")
-            L.append("  · 运动负荷：（）")
-            L.append("")
-            L.append("4. 主观与伤病预警（需手动填写）")
+            L.append("3. 主观与伤病预警（需手动填写）")
             L.append("  · 动作降级情况：是否降重量/降到多少kg（）")
             L.append("  · 腰部反馈：深蹲/硬拉腰部压力或牵扯感（）")
             L.append("  · 脚踝反馈：负重时左脚踝内侧隐痛（）")
