@@ -31,8 +31,8 @@ Garmin 训练日报 · 2026-11-14
   · 晨起 96（高）
 
 5. 其他日常指标
-  · 压力：平均 18 / 最高 87
-  · 步数 3569　距离 2.8km　消耗 1273.0千卡
+  · 压力：平均 19 / 最高 87
+  · 步数 5747　距离 4.5km　消耗 1599.0千卡
   · 今天课表：无计划
 
 6. 旧伤晨起专项（需手动填写）
@@ -49,4 +49,4 @@ Garmin 训练日报 · 2026-11-14
   （今天及未来 48 小时没有训练安排）
 
 【原始数据（可复制导出）】
-{"training_status": "无", "fitness_trend": "未知", "acwr_ratio": null, "acwr_status_raw": null, "acwr_status": null, "acute_load": null, "chronic_load": null, "vo2max": null, "load_balance": null, "load_alow": null, "load_alow_min": null, "load_alow_max": null, "load_ahigh": null, "load_ahigh_min": null, "load_ahigh_max": null, "load_ana": null, "load_ana_min": null, "load_ana_max": null, "device": null, "sleep_score": 71, "sleep_qualifier_raw": "FAIR", "sleep_qualifier": "一般", "sleep_duration": "5小时34分", "nap": "30分钟", "deep": "1小时44分", "light": "3小时8分", "rem": "42分钟", "awake": "20分钟", "sleep_subs": {"时长": "一般", "压力": "良好", "清醒次数": "一般", "REM占比": "13% 一般", "浅睡占比": "56% 优秀", "深睡占比": "31% 优秀", "不安": "一般"}, "spo2_avg": 97.0, "spo2_low": 87, "respiration": 14.0, "sleep_hr": 46.0, "sleep_stress": 14.0, "sleep_need_actual": 480, "sleep_need_baseline": 480, "hrv_status_raw": "UNBALANCED", "hrv_status": "失衡", "hrv_night": 84, "hrv_5min_high": 128, "hrv_weekly": 75, "hrv_baseline_low": 76, "hrv_baseline_high": 96, "rhr": 41, "rhr_7d": 43, "stress_avg": 18, "stress_max": 87, "steps": 3569, "distance_km": 2.8, "calories": 1273.0, "has_workout": false, "body_battery": 96, "bb_level": "高", "run_activities": [], "strength_activities": [], "plan_name": "5公里 计划", "plan_workouts": []}
+{"training_status": "无", "fitness_trend": "未知", "acwr_ratio": null, "acwr_status_raw": null, "acwr_status": null, "acute_load": null, "chronic_load": null, "vo2max": null, "load_balance": null, "load_alow": null, "load_alow_min": null, "load_alow_max": null, "load_ahigh": null, "load_ahigh_min": null, "load_ahigh_max": null, "load_ana": null, "load_ana_min": null, "load_ana_max": null, "device": null, "sleep_score": 71, "sleep_qualifier_raw": "FAIR", "sleep_qualifier": "一般", "sleep_duration": "5小时34分", "nap": "30分钟", "deep": "1小时44分", "light": "3小时8分", "rem": "42分钟", "awake": "20分钟", "sleep_subs": {"时长": "一般", "压力": "良好", "清醒次数": "一般", "REM占比": "13% 一般", "浅睡占比": "56% 优秀", "深睡占比": "31% 优秀", "不安": "一般"}, "spo2_avg": 97.0, "spo2_low": 87, "respiration": 14.0, "sleep_hr": 46.0, "sleep_stress": 14.0, "sleep_need_actual": 480, "sleep_need_baseline": 480, "hrv_status_raw": "UNBALANCED", "hrv_status": "失衡", "hrv_night": 84, "hrv_5min_high": 128, "hrv_weekly": 75, "hrv_baseline_low": 76, "hrv_baseline_high": 96, "rhr": 41, "rhr_7d": 43, "stress_avg": 19, "stress_max": 87, "steps": 5747, "distance_km": 4.5, "calories": 1599.0, "has_workout": false, "body_battery": 96, "bb_level": "高", "run_activities": [], "strength_activities": [], "plan_name": "5公里 计划", "plan_workouts": []}
