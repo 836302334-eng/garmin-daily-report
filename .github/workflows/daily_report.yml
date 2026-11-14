@@ -2,7 +2,7 @@ name: Daily Garmin Report
 
 on:
   schedule:
-    # UTC 02:00 = 北京时间 10:00
+    # UTC 02:17 = 北京时间 10:17
     - cron: '0 2 * * *'
   workflow_dispatch:   # 允许手动点击运行测试
 
