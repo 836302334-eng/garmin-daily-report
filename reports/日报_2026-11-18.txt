@@ -1,0 +1,56 @@
+================================================
+Garmin 训练日报 · 2026-11-18
+================================================
+
+【第一大类：跑步训练数据】
+（前 24 小时无跑步记录）
+
+【第二大类：力量训练数据】
+（前 24 小时无力量训练记录）
+
+【第三大类：晨起恢复数据】
+
+1. 睡眠数据
+  · 睡眠评分：73（一般）
+  · 总时长 5小时47分　午睡 30分钟
+  · 深睡 53分钟 / 浅睡 3小时53分 / REM 1小时1分 / 清醒 3分钟
+  · 分项：时长[一般] 压力[一般] 清醒次数[优秀]
+  · 分项：REM[18% 一般] 浅睡[67% 一般] 深睡[15% 一般] 不安[优秀]
+  · 血氧 96.0%（最低 81%）　呼吸 13.0次/分
+  · 睡眠心率 52.0　睡眠压力 17.0
+  · 睡眠需求：实际 480 / 基准 480 分钟
+
+2. HRV 状态
+  · 状态 偏低　昨晚均值 60ms　昨晚5分钟最高 94ms
+  · 7天均值 71ms　平衡区间 76~96ms
+
+3. 静息心率
+  · 今晨 46　对比7天均值 43
+
+4. 身体电量
+  · 晨起 73（中等）
+
+5. 其他日常指标
+  · 压力：平均 28 / 最高 93
+  · 步数 9466　距离 7.4km　消耗 1720.0千卡
+  · 今天课表：无计划
+
+6. 旧伤晨起专项（需手动填写）
+  · 左脚踝内侧胫骨后肌腱（）　腰椎（）　右脚跟腱（）
+
+【总结】
+今天状态总体还行（2 项提醒），照常训练，注意下面几点。
+
+问题与建议：
+🟡 [无氧不足] 黄｜负荷平衡=无氧不足
+   → 有氧够量了，建议每周补1~2次无氧/间歇
+🟡 [HRV失衡] 黄｜HRV=偏低
+   → 强度降档，别做间歇
+
+【训练计划（Garmin Coach · 5公里 计划）】
+  · 今天：休息日
+  · 2026-11-19：基础训练｜配速 6:20/km｜约 62 分钟｜有氧基础
+  · 2026-11-20：基础训练｜配速 6:20/km｜约 36 分钟｜有氧基础
+
+【原始数据（可复制导出）】
+{"training_status": "无", "fitness_trend": "持平", "acwr_ratio": 0.5, "acwr_status_raw": "LOW", "acwr_status": "偏低", "acute_load": 190, "chronic_load": 324, "vo2max": 48.1, "load_balance": "ANAEROBIC_SHORTAGE", "load_alow": 717.8822, "load_alow_min": 264, "load_alow_max": 598, "load_ahigh": 587.1835, "load_ahigh_min": 537, "load_ahigh_max": 871, "load_ana": 77.846466, "load_ana_min": 267, "load_ana_max": 467, "device": "Forerunner 265", "sleep_score": 73, "sleep_qualifier_raw": "FAIR", "sleep_qualifier": "一般", "sleep_duration": "5小时47分", "nap": "30分钟", "deep": "53分钟", "light": "3小时53分", "rem": "1小时1分", "awake": "3分钟", "sleep_subs": {"时长": "一般", "压力": "一般", "清醒次数": "优秀", "REM占比": "18% 一般", "浅睡占比": "67% 一般", "深睡占比": "15% 一般", "不安": "优秀"}, "spo2_avg": 96.0, "spo2_low": 81, "respiration": 13.0, "sleep_hr": 52.0, "sleep_stress": 17.0, "sleep_need_actual": 480, "sleep_need_baseline": 480, "hrv_status_raw": "LOW", "hrv_status": "偏低", "hrv_night": 60, "hrv_5min_high": 94, "hrv_weekly": 71, "hrv_baseline_low": 76, "hrv_baseline_high": 96, "rhr": 46, "rhr_7d": 43, "stress_avg": 28, "stress_max": 93, "steps": 9466, "distance_km": 7.4, "calories": 1720.0, "has_workout": false, "body_battery": 73, "bb_level": "中等", "run_activities": [], "strength_activities": [], "plan_name": "5公里 计划", "plan_workouts": [{"date": "2026-11-18", "is_today": true, "name": null, "desc": null, "dur_sec": null, "effect": "INVALID", "rest": true}, {"date": "2026-11-19", "is_today": false, "name": "基础训练", "desc": "6:20/km", "dur_sec": 3720, "effect": "AEROBIC_BASE", "rest": false}, {"date": "2026-11-20", "is_today": false, "name": "基础训练", "desc": "6:20/km", "dur_sec": 2160, "effect": "AEROBIC_BASE", "rest": false}]}
