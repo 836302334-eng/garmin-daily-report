@@ -260,6 +260,8 @@ TE_MAP = {"AEROBIC_BASE": "有氧基础", "ANAEROBIC": "无氧", "VO2MAX": "VO2M
           "TEMPO": "节奏跑", "THRESHOLD": "阈值跑", "LACTATE_THRESHOLD": "乳酸阈值",
           "RECOVERY": "恢复", "INVALID": "-"}
 INTENSE_EFFECTS = {"TEMPO", "THRESHOLD", "LACTATE_THRESHOLD", "ANAEROBIC", "VO2MAX", "INTERVAL"}
+RUN_TYPES = {"running", "trail_running", "treadmill_running", "indoor_running",
+             "track_running", "virtual_run", "obstacle_run"}
 COURSE_MAP = [
     ("乳酸阈值", "乳酸阈值", True),
     ("阈值", "阈值训练", True),
@@ -765,7 +767,8 @@ def parse(data, api=None, report_date=None):
         vals = bb[0].get("bodyBatteryValuesArray", [])
         nums = [v[1] for v in vals if len(v) > 1 and v[1] is not None]
         if nums:
-            p["body_battery"] = nums[0]
+            p["body_battery_midnight"] = nums[0]     # 午夜起点，不是晨起
+            p["body_battery"] = max(nums)            # 当日峰值 ≈ 晨起满电值
             p["body_battery_peak"] = max(nums)
             p["body_battery_min"] = min(nums)
             p["body_battery_last"] = nums[-1]
@@ -779,7 +782,7 @@ def parse(data, api=None, report_date=None):
     str_acts = []
     for a in acts:
         tk = (a.get("activityType") or {}).get("typeKey")
-        if tk == "running":
+        if tk in RUN_TYPES:
             run_acts.append(a)
         elif tk == "strength_training":
             str_acts.append(a)
@@ -806,6 +809,10 @@ def parse(data, api=None, report_date=None):
                 sets = safe(lambda: api.get_activity_exercise_sets(str_act.get("activityId")))
                 sets = (sets or {}).get("exerciseSets")
             p["strength_activities"].append(parse_strength(str_act, sets))
+
+    # 有活动但没识别出跑步：给出排查提示（类型/同步）
+    if not p["run_activities"] and (p.get("steps") or 0) > 3000 and (p.get("distance_km") or 0) > 3:
+        p["run_missing_hint"] = True
 
     # --- Garmin Coach 未来 48 小时训练计划 ---
     p["plan_name"] = None
@@ -965,6 +972,9 @@ def eval_plan(p, ctx, cfg=COACH):
             reasons.append("睡眠 <7h，质量课降档")
 
         adj = min(mins, int(cfg["session_max"])) if mins else None
+        if verdict == "降级" and mins:
+            adj = min(40, mins)
+            reasons.append("按轻松跑 40 min 执行")
         item.update({"minutes": mins, "light": light, "verdict": verdict,
                      "reason": "；".join(reasons) if reasons else "与状态匹配",
                      "adjusted_min": adj})
@@ -1151,6 +1161,9 @@ def build_report(p, issues, date):
             L.append("  · 跑后处理：冰敷15分钟（）　脚踝等长收缩（）")
     else:
         L.append("（前 24 小时无跑步记录）")
+        if p.get("run_missing_hint"):
+            L.append("  ⚠ 今日步数与距离显示有活动，但未识别到跑步记录："
+                     "可能是活动类型（越野/跑步机/场地）或尚未同步")
 
     # ---------- 第二大类：力量训练数据 ----------
     L.append("")
@@ -1208,8 +1221,8 @@ def build_report(p, issues, date):
     L.append(f"  · 今晨 {p['rhr']}　对比7天均值 {p['rhr_7d']}")
     L.append("")
     L.append("4. 身体电量")
-    L.append(f"  · 晨起 {p['body_battery']}（{p['bb_level'] or '-'}）"
-             f"　峰值 {p['body_battery_peak']}　最低 {p['body_battery_min']}　当日最后 {p['body_battery_last']}")
+    L.append(f"  · 晨起峰值 {p['body_battery_peak']}（{p['bb_level'] or '-'}）"
+             f"　午夜起点 {p.get('body_battery_midnight')}　最低 {p['body_battery_min']}　当日最后 {p['body_battery_last']}")
     L.append("")
     L.append("5. 其他日常指标")
     L.append(f"  · 压力：平均 {p['stress_avg']} / 最高 {p['stress_max']}")
@@ -1250,10 +1263,13 @@ def build_report(p, issues, date):
                 L.append(f"    - {r.get('name')}：无异常")
 
     # ---------- 总结 ----------
-    red = [i for i in issues if i[2] == "红"]
+    body_red = [i for i in issues if i[2] == "红" and i[0] != "计划超时"]
+    plan_red = [i for i in issues if i[2] == "红" and i[0] == "计划超时"]
     yellow = [i for i in issues if i[2] == "黄"]
-    if red:
-        summary = f"今天身体明显没恢复（{len(red)} 项红），不适合跑强度课。"
+    if body_red:
+        summary = f"今天身体明显没恢复（{len(body_red)} 项红），不适合跑强度课。"
+    elif plan_red:
+        summary = "身体指标没有明显异常，但 Garmin 的计划本身超了你的红线，已按上限降级。"
     elif yellow:
         summary = f"今天状态总体还行（{len(yellow)} 项提醒），照常训练，注意下面几点。"
     else:
