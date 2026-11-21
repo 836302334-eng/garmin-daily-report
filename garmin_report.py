@@ -1,7 +1,27 @@
 # -*- coding: utf-8 -*-
 """
-Garmin 训练日报 · GitHub Actions 版
-支持多段跑步/力量，深度解析力量动作、重量、次数，并完美中英翻译。
+Garmin 训练日报 · GitHub Actions 版（教练判定增强 v3）
+
+在原有“采集 + 描述”基础上，新增“审课”层：
+1. 每天用你的个人红线（单次时长、HRV、RHR、电量、疼痛/脚踝）给状态判灯；
+2. 把 Garmin Coach 未来 48 小时的课逐一过闸：照做 / 降级 / 换内容 / 休，并给出理由；
+3. 对过去 24 小时已完成的跑步做复盘：是否超时、Garmin 负荷是否越线、步频是否掉；
+4. 输出 coach_row（可直接写入 daily.csv）与 coach_eval（判定结果），供外部系统消费。
+
+个人红线默认值（可用环境变量覆盖）：
+  COACH_HRV_ABS=76        HRV 绝对红线（ms）
+  COACH_HRV_WEEKLY=76     7 日均 HRV 红线（ms）
+  COACH_RHR_RED=44        静息心率红灯（bpm）
+  COACH_RHR_DELTA=3       静息心率相对 7 日均的警戒增幅
+  COACH_BB_RED=80         电量黄线
+  COACH_BB_STOP=50        电量红线（禁强度）
+  COACH_SESSION_MAX=50    单次跑步时长上限（分钟）
+  COACH_LOAD_YELLOW=85   单次 Garmin 负荷黄线（EPOC 口径，非 TRIMP）
+  COACH_LOAD_RED=100     单次 Garmin 负荷红线
+  （旧名 COACH_TRIMP_YELLOW / COACH_TRIMP_RED 仍兼容）
+  COACH_PAIN_YELLOW=2 COACH_PAIN_RED=3 COACH_PAIN_STOP=4  疼痛/脚踝四档
+手动输入（当天填，没填就留空，不要默认 0）：
+  COACH_ANKLE=0 COACH_PAIN=0 COACH_ENERGY=4 COACH_SORENESS=0
 """
 
 import datetime
@@ -29,6 +49,47 @@ REPORT_DIR = Path(os.environ.get("REPORT_DIR", "reports")).expanduser()
 RETENTION_DAYS = int(os.environ.get("RETENTION_DAYS", "30"))
 DATE_OFFSET = int(os.environ.get("DATE_OFFSET", "0"))
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+
+
+def _env_num(key, default):
+    try:
+        return float(os.environ.get(key, default))
+    except (TypeError, ValueError):
+        return default
+
+
+COACH = {
+    "hrv_abs": _env_num("COACH_HRV_ABS", 76),
+    "hrv_weekly": _env_num("COACH_HRV_WEEKLY", 76),
+    "rhr_red": _env_num("COACH_RHR_RED", 44),
+    "rhr_delta": _env_num("COACH_RHR_DELTA", 3),
+    "bb_red": _env_num("COACH_BB_RED", 80),
+    "bb_stop": _env_num("COACH_BB_STOP", 50),
+    "session_max": _env_num("COACH_SESSION_MAX", 50),
+    "load_yellow": _env_num("COACH_LOAD_YELLOW", _env_num("COACH_TRIMP_YELLOW", 85)),
+    "load_red": _env_num("COACH_LOAD_RED", _env_num("COACH_TRIMP_RED", 100)),
+    "pain_yellow": _env_num("COACH_PAIN_YELLOW", 2),
+    "pain_red": _env_num("COACH_PAIN_RED", 3),
+    "pain_stop": _env_num("COACH_PAIN_STOP", 4),
+}
+
+MANUAL = {
+    "ankle": os.environ.get("COACH_ANKLE"),
+    "pain": os.environ.get("COACH_PAIN"),
+    "energy": os.environ.get("COACH_ENERGY"),
+    "soreness": os.environ.get("COACH_SORENESS"),
+}
+
+
+def _manual_num(key):
+    v = MANUAL.get(key)
+    if v is None or str(v).strip() == "":
+        return None
+    try:
+        return float(v)
+    except ValueError:
+        return None
+
 
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL, logging.INFO),
@@ -93,7 +154,9 @@ def push_wecom(content: str, webhook: str = None, msgtype: str = "markdown"):
 
 def build_push_summary(p: dict, issues: list, report_date: str, file_path: Path) -> str:
     ras = p.get("run_activities") or []
+    ev = p.get("coach_eval") or {}
     lines = [f"**Garmin 训练日报 · {report_date}**", ""]
+    lines.append(f"{ev.get('icon', '⚪')} 判定：**{ev.get('verdict', '-')}**｜{ev.get('light', '-')}")
 
     if ras:
         if len(ras) == 1:
@@ -113,18 +176,26 @@ def build_push_summary(p: dict, issues: list, report_date: str, file_path: Path)
     lines.append(
         f"😴 睡眠 {p.get('sleep_score')}({p.get('sleep_qualifier')}) "
         f"{p.get('sleep_duration')}｜HRV {p.get('hrv_status')} {p.get('hrv_night')}ms"
+        f"（7日 {p.get('hrv_weekly')}）"
     )
     lines.append(
-        f"❤️ 静息 {p.get('rhr')}｜电量 {p.get('body_battery')}({p.get('bb_level')})"
+        f"❤️ 静息 {p.get('rhr')}｜电量 {p.get('body_battery')}"
+        f"（最低 {p.get('body_battery_min')}）"
     )
+
+    for reason in (ev.get("reasons") or [])[:3]:
+        lines.append(f"· {reason}")
+
+    for w in (ev.get("plan") or []):
+        if w.get("is_today"):
+            lines.append(f"📋 今日课：{w.get('name') or '休息'} → **{w.get('verdict')}**"
+                         + (f"（{w.get('adjusted_min')}min）" if w.get("adjusted_min") else ""))
 
     if issues:
         lines.append("")
         for name, fact, sev, advice in issues:
             icon = "🔴" if sev == "红" else "🟡"
             lines.append(f"{icon} {name}｜{advice}")
-    else:
-        lines.append("✅ 无异常")
 
     lines.append("")
     lines.append(f"📄 完整日报：`{file_path.name}`")
@@ -188,6 +259,7 @@ SPLIT_TYPE = {"INTERVAL_WARMUP": "热身", "INTERVAL_ACTIVE": "间歇", "INTERVA
 TE_MAP = {"AEROBIC_BASE": "有氧基础", "ANAEROBIC": "无氧", "VO2MAX": "VO2Max",
           "TEMPO": "节奏跑", "THRESHOLD": "阈值跑", "LACTATE_THRESHOLD": "乳酸阈值",
           "RECOVERY": "恢复", "INVALID": "-"}
+INTENSE_EFFECTS = {"TEMPO", "THRESHOLD", "LACTATE_THRESHOLD", "ANAEROBIC", "VO2MAX", "INTERVAL"}
 COURSE_MAP = [
     ("乳酸阈值", "乳酸阈值", True),
     ("阈值", "阈值训练", True),
@@ -321,8 +393,10 @@ def parse_run(a, hr_zones):
         "device": None,
         "distance_km": round(d / 1000, 2) if d else 0,
         "duration": fmt_sec(dur),
+        "duration_sec": float(dur or 0),
         "elapsed": fmt_sec(a.get("elapsedDuration")),
         "pace": fmt_pace(pace),
+        "pace_sec": pace,
         "best_pace": fmt_pace(best),
         "splits": splits,
         "main_pace": main_pace,
@@ -345,43 +419,43 @@ def parse_run(a, hr_zones):
 
 
 def parse_strength(a, exercise_sets):
-    """深度解析力量训练：提取动作、重量、次数，过滤心率热身。"""
+    """深度解析力量训练：提取动作、重量、次数；一组多动作也全部解析。"""
     sets_data = defaultdict(list)
-    
+    unknown = set()
+
     if exercise_sets:
         for s in exercise_sets:
             if s.get("setType") == "REST":
                 continue
-            
+
             ex_list = s.get("exercises") or []
             if not ex_list:
                 continue
-                
-            ex = ex_list[0]
-            ex_name = ex.get("name") or ex.get("category") or "UNKNOWN"
-            
-            # 过滤掉纯心肺/热身段，不纳入力量动作
-            if ex_name in ("CARDIO", "UNKNOWN"):
-                continue
-                
-            cn_name = EXERCISE_MAP.get(ex_name, ex_name)
-            
-            weight_g = s.get("weight")
-            reps = s.get("repetitionCount")
-            duration = s.get("duration")
-            
-            if weight_g and reps:
-                sets_data[cn_name].append(f"{weight_g / 1000.0:.1f}kg×{reps}次")
-            elif weight_g:
-                sets_data[cn_name].append(f"{weight_g / 1000.0:.1f}kg")
-            elif reps:
-                sets_data[cn_name].append(f"{reps}次")
-            elif duration:
-                sets_data[cn_name].append(f"{int(duration)}秒")
-            else:
-                sets_data[cn_name].append("1组")
 
-    # 计算真实训练组数（排除纯心肺）
+            for ex in ex_list:
+                ex_name = ex.get("name") or ex.get("category") or "UNKNOWN"
+                if ex_name in ("CARDIO", "UNKNOWN"):
+                    continue
+                cn_name = EXERCISE_MAP.get(ex_name)
+                if not cn_name:
+                    cn_name = ex_name
+                    unknown.add(ex_name)
+
+                weight_g = s.get("weight")
+                reps = s.get("repetitionCount")
+                duration = s.get("duration")
+
+                if weight_g and reps:
+                    sets_data[cn_name].append(f"{weight_g / 1000.0:.1f}kg×{reps}次")
+                elif weight_g:
+                    sets_data[cn_name].append(f"{weight_g / 1000.0:.1f}kg")
+                elif reps:
+                    sets_data[cn_name].append(f"{reps}次")
+                elif duration:
+                    sets_data[cn_name].append(f"{int(duration)}秒")
+                else:
+                    sets_data[cn_name].append("1组")
+
     real_sets_count = sum(len(v) for v in sets_data.values())
 
     return {
@@ -393,7 +467,8 @@ def parse_strength(a, exercise_sets):
         "max_hr": a.get("maxHR"),
         "calories": round(a["calories"]) if a.get("calories") else None,
         "set_count": real_sets_count,
-        "details": dict(sets_data)
+        "details": dict(sets_data),
+        "unknown_exercises": sorted(unknown),
     }
 
 
@@ -597,6 +672,7 @@ def parse(data, api=None, report_date=None):
     p = {}
     report_date = report_date or datetime.date.today().isoformat()
     today = datetime.date.fromisoformat(report_date)
+    p["date"] = report_date
 
     ts = data["training_status"] or {}
     mts = ts.get("mostRecentTrainingStatus") or {}
@@ -652,8 +728,11 @@ def parse(data, api=None, report_date=None):
     p["sleep_hr"] = sl.get("avgHeartRate")
     p["sleep_stress"] = sl.get("avgSleepStress")
     need = sl.get("sleepNeed") or {}
-    p["sleep_need_actual"] = need.get("actual")
+    p["sleep_need_min"] = need.get("actual")
     p["sleep_need_baseline"] = need.get("baseline")
+    p["sleep_actual_min"] = round((sl.get("sleepTimeSeconds") or 0) / 60)
+    p["sleep_debt_min"] = max(0, (p["sleep_need_min"] or 0) - p["sleep_actual_min"])
+    p["sleep_hours"] = round((sl.get("sleepTimeSeconds") or 0) / 3600, 2) if sl.get("sleepTimeSeconds") else None
 
     hs = (data["hrv"] or {}).get("hrvSummary", {})
     p["hrv_status_raw"] = hs.get("status")
@@ -675,14 +754,22 @@ def parse(data, api=None, report_date=None):
     p["calories"] = (data["summary"] or {}).get("totalKilocalories")
     p["has_workout"] = bool(data["next_workout"]) if data["next_workout"] is not None else None
 
+    # 身体电量：晨起 / 峰值 / 最低 / 当日最后
     bb = data["body_battery"]
     p["body_battery"] = None
+    p["body_battery_peak"] = None
+    p["body_battery_min"] = None
+    p["body_battery_last"] = None
     p["bb_level"] = None
     if isinstance(bb, list) and bb:
         vals = bb[0].get("bodyBatteryValuesArray", [])
-        if vals:
-            p["body_battery"] = max(v[1] for v in vals if v[1] is not None)
-            p["bb_level"] = "高" if p["body_battery"] >= 75 else ("中等" if p["body_battery"] >= 50 else "低")
+        nums = [v[1] for v in vals if len(v) > 1 and v[1] is not None]
+        if nums:
+            p["body_battery"] = nums[0]
+            p["body_battery_peak"] = max(nums)
+            p["body_battery_min"] = min(nums)
+            p["body_battery_last"] = nums[-1]
+            p["bb_level"] = "高" if p["body_battery_peak"] >= 75 else ("中等" if p["body_battery_peak"] >= 50 else "低")
 
     # --- 多段活动识别 ---
     p["run_activities"] = []
@@ -750,10 +837,179 @@ def parse(data, api=None, report_date=None):
                     })
             p["plan_workouts"] = wl
 
+    # “今天课表”以计划里的今日课为准，避免 next_workout 为空时误报“无计划”
+    if p["plan_workouts"]:
+        p["has_workout"] = any((not w.get("rest")) and w.get("name")
+                               for w in p["plan_workouts"] if w.get("is_today"))
+
+    # 手动输入
+    p["ankle"] = _manual_num("ankle")
+    p["pain"] = _manual_num("pain")
+    p["energy"] = _manual_num("energy")
+    p["soreness"] = _manual_num("soreness")
+
     return p
 
 
-# ==================== 判规则区 ====================
+# ==================== 教练判定区 ====================
+def compute_context(p):
+    """把晨起状态压成判定上下文。"""
+    hrv, hw = p.get("hrv_night"), p.get("hrv_weekly")
+    rhr, rhr7 = p.get("rhr"), p.get("rhr_7d")
+    sleep = p.get("sleep_hours")
+    bb = p.get("body_battery_peak") if p.get("body_battery_peak") is not None else p.get("body_battery")
+    ankle, pain = p.get("ankle"), p.get("pain")
+
+    return {
+        "hrv": hrv,
+        "hrv_weekly": hw,
+        "hrv_low": hrv is not None and hrv < COACH["hrv_abs"],
+        "hrv_weekly_low": hw is not None and hw < COACH["hrv_weekly"],
+        "rhr": rhr,
+        "rhr_7d": rhr7,
+        "rhr_red": rhr is not None and rhr >= COACH["rhr_red"],
+        "rhr_delta_high": (rhr is not None and rhr7 is not None
+                           and (rhr - rhr7) >= COACH["rhr_delta"]),
+        "sleep": sleep,
+        "sleep_short": sleep is not None and sleep < 6,
+        "sleep_low": sleep is not None and sleep < 7,
+        "bb": bb,
+        "bb_stop": bb is not None and bb < COACH["bb_stop"],
+        "bb_low": bb is not None and bb < COACH["bb_red"],
+        "ankle": ankle,
+        "pain": pain,
+        "pain_stop": (ankle is not None and ankle >= COACH["pain_stop"]) or \
+                     (pain is not None and pain >= COACH["pain_stop"]),
+        "pain_red": (ankle is not None and ankle >= COACH["pain_red"]) or \
+                    (pain is not None and pain >= COACH["pain_red"]),
+        "pain_yellow": (ankle is not None and ankle >= COACH["pain_yellow"]) or \
+                       (pain is not None and pain >= COACH["pain_yellow"]),
+    }
+
+
+def decide(ctx, cfg=COACH):
+    """返回 (灯, 结论, 理由列表)。"""
+    reasons = []
+    hard = sum([ctx["hrv_low"], ctx["rhr_red"], ctx["sleep_short"], ctx["bb_stop"]])
+    if ctx["hrv_low"]:
+        reasons.append(f"HRV {ctx['hrv']:.0f} < {cfg['hrv_abs']:.0f}")
+    if ctx["rhr_red"]:
+        reasons.append(f"静息心率 {ctx['rhr']:.0f} ≥ 绝对红线 {cfg['rhr_red']:.0f}")
+    if ctx["sleep_short"]:
+        reasons.append("睡眠 <6h")
+    if ctx["bb_stop"]:
+        reasons.append("电量 <50")
+
+    soft = 0
+    if not ctx["hrv_low"] and ctx["hrv_weekly_low"]:
+        soft += 1
+        reasons.append(f"7 日均 HRV {ctx['hrv_weekly']:.0f} < {cfg['hrv_weekly']:.0f}")
+    if not ctx["rhr_red"] and ctx["rhr_delta_high"]:
+        soft += 1
+        reasons.append(f"静息心率较 7 日均 +{ctx['rhr'] - ctx['rhr_7d']:.0f} bpm")
+    if not ctx["sleep_short"] and ctx["sleep_low"]:
+        soft += 1
+        reasons.append("睡眠 <7h")
+    if not ctx["bb_stop"] and ctx["bb_low"]:
+        soft += 1
+        reasons.append(f"电量 {ctx['bb']:.0f} < {cfg['bb_red']:.0f}")
+    if ctx["pain_red"] and not ctx["pain_stop"]:
+        soft += 1
+        reasons.append("脚踝/疼痛达红档")
+
+    if ctx["pain_stop"]:
+        return "红", "休", reasons + ["脚踝/疼痛达停练线，先转诊"]
+    if hard >= 2:
+        return "红", "休", reasons
+    if hard == 1 or soft >= 1:
+        return "黄", "改", reasons
+    return "绿", "练", ["各项达标"]
+
+
+def eval_plan(p, ctx, cfg=COACH):
+    """审视 Garmin 排的课，返回逐条调整建议。"""
+    out = []
+    for w in (p.get("plan_workouts") or []):
+        item = dict(w)
+        if w.get("rest"):
+            item.update({"minutes": 0, "light": "绿", "verdict": "休",
+                         "reason": "休息日", "adjusted_min": 0})
+            out.append(item)
+            continue
+
+        mins = round((w.get("dur_sec") or 0) / 60) if w.get("dur_sec") else None
+        light, verdict, reasons = "绿", "照做", []
+        if mins and mins > cfg["session_max"]:
+            light, verdict = "红", "改"
+            reasons.append(f"时长 {mins}min > 上限 {cfg['session_max']:.0f}min")
+        if w.get("effect") in INTENSE_EFFECTS and ctx["hrv_weekly_low"]:
+            if light == "绿":
+                light = "黄"
+            if verdict == "照做":
+                verdict = "降级"
+            reasons.append(f"强度课与 7 日均 HRV {ctx['hrv_weekly']:.0f} 偏低冲突")
+        if ctx["pain_stop"]:
+            light, verdict = "红", "休"
+            reasons.append("脚踝/疼痛停练线")
+        elif ctx["pain_red"] and verdict == "照做":
+            light, verdict = "黄", "降级"
+            reasons.append("脚踝/疼痛红档，降量")
+        if ctx["bb_stop"]:
+            light, verdict = "红", "休"
+            reasons.append("电量 <50，禁强度")
+        if ctx["sleep_short"]:
+            light, verdict = "红", "休"
+            reasons.append("睡眠 <6h，不做主课")
+        elif ctx["sleep_low"] and w.get("effect") in INTENSE_EFFECTS:
+            light, verdict = "黄", "降级"
+            reasons.append("睡眠 <7h，质量课降档")
+
+        adj = min(mins, int(cfg["session_max"])) if mins else None
+        item.update({"minutes": mins, "light": light, "verdict": verdict,
+                     "reason": "；".join(reasons) if reasons else "与状态匹配",
+                     "adjusted_min": adj})
+        out.append(item)
+    return out
+
+
+def eval_runs(p, cfg=COACH):
+    """复盘过去 24h 已完成的跑步。"""
+    flags = []
+    for r in (p.get("run_activities") or []):
+        f = []
+        mins = (r.get("duration_sec") or 0) / 60
+        if mins > cfg["session_max"]:
+            f.append(f"单次 {mins:.0f}min 超上限 {cfg['session_max']:.0f}min")
+        load = r.get("training_load")
+        if load is not None:
+            if load > cfg["load_red"]:
+                f.append(f"Garmin 负荷 {load:.0f} 超红线 {cfg['load_red']:.0f}")
+            elif load > cfg["load_yellow"]:
+                f.append(f"Garmin 负荷 {load:.0f} 超黄线 {cfg['load_yellow']:.0f}")
+        cad = r.get("avg_cadence")
+        pace = r.get("pace_sec")
+        if cad and pace and pace > 330 and cad < 176:
+            f.append(f"慢跑步频 {cad} 偏低（<176）")
+        flags.append({"name": r.get("name"), "flags": f})
+    return flags
+
+
+def coach_summary(p, ctx, decision, plan_eval, run_eval):
+    light, verdict, reasons = decision
+    icon = {"红": "🔴", "黄": "🟡", "绿": "🟢"}.get(light, "⚪")
+    today = next((w for w in plan_eval if w.get("is_today")), None)
+    return {
+        "icon": icon,
+        "light": light,
+        "verdict": verdict,
+        "reasons": reasons,
+        "plan": plan_eval,
+        "runs": run_eval,
+        "today_plan": today,
+    }
+
+
+# ==================== 规则区（兼容原有） ====================
 def check_rules(p):
     issues = []
 
@@ -781,11 +1037,21 @@ def check_rules(p):
     if p["hrv_status"] in ("失衡", "偏低", "很差"):
         add("HRV失衡", f"HRV={p['hrv_status']}", "黄", "强度降档，别做间歇")
 
-    if p["rhr"] is not None and p["rhr_7d"] is not None and (p["rhr"] - p["rhr_7d"]) >= 7:
+    if p["rhr"] is not None and p["rhr_7d"] is not None and (p["rhr"] - p["rhr_7d"]) >= COACH["rhr_delta"]:
         add("静息心率高", f"今日{p['rhr']} vs 近7天{p['rhr_7d']}", "黄", "休息或极轻松活动")
 
-    if p["body_battery"] is not None and p["body_battery"] < 30:
-        add("身体电量低", f"身体电量={p['body_battery']}", "黄", "先充电，强度课换轻松跑或后挪")
+    bb_peak = p.get("body_battery_peak")
+    if bb_peak is not None and bb_peak < COACH["bb_red"]:
+        add("身体电量低", f"当日峰值电量={bb_peak}", "黄", "先充电，强度课换轻松跑或后挪")
+
+    for w in (p.get("plan_workouts") or []):
+        if w.get("rest") or not w.get("dur_sec"):
+            continue
+        mins = int(w["dur_sec"] // 60)
+        if mins > COACH["session_max"]:
+            add("计划超时",
+                f"{w['date']} {w.get('name') or ''} {mins}min > 上限 {COACH['session_max']:.0f}min",
+                "红", f"按红线砍到 ≤{COACH['session_max']:.0f} min，别照抄 Garmin")
 
     return issues
 
@@ -908,6 +1174,8 @@ def build_report(p, issues, date):
                     L.append(f"  · {ex_name}：{sets_str}")
             else:
                 L.append("  · （本次训练未记录具体动作和重量）")
+            if sa.get("unknown_exercises"):
+                L.append(f"  · 未收录动作（建议补字典）：{', '.join(sa['unknown_exercises'])}")
             L.append("")
             L.append("3. 主观与伤病预警（需手动填写）")
             L.append("  · 动作降级情况：是否降重量/降到多少kg（）")
@@ -929,7 +1197,8 @@ def build_report(p, issues, date):
     L.append(f"  · 分项：REM[{p['sleep_subs']['REM占比']}] 浅睡[{p['sleep_subs']['浅睡占比']}] 深睡[{p['sleep_subs']['深睡占比']}] 不安[{p['sleep_subs']['不安']}]")
     L.append(f"  · 血氧 {p['spo2_avg']}%（最低 {p['spo2_low']}%）　呼吸 {p['respiration']}次/分")
     L.append(f"  · 睡眠心率 {p['sleep_hr']}　睡眠压力 {p['sleep_stress']}")
-    L.append(f"  · 睡眠需求：实际 {p['sleep_need_actual']} / 基准 {p['sleep_need_baseline']} 分钟")
+    L.append(f"  · 睡眠需求 {p['sleep_need_min']} / 基准 {p['sleep_need_baseline']} 分钟"
+             f"　实睡 {p['sleep_actual_min']} 分钟　欠 {p['sleep_debt_min']} 分钟")
     L.append("")
     L.append("2. HRV 状态")
     L.append(f"  · 状态 {p['hrv_status']}　昨晚均值 {p['hrv_night']}ms　昨晚5分钟最高 {p['hrv_5min_high']}ms")
@@ -939,7 +1208,8 @@ def build_report(p, issues, date):
     L.append(f"  · 今晨 {p['rhr']}　对比7天均值 {p['rhr_7d']}")
     L.append("")
     L.append("4. 身体电量")
-    L.append(f"  · 晨起 {p['body_battery']}（{p['bb_level'] or '-'}）")
+    L.append(f"  · 晨起 {p['body_battery']}（{p['bb_level'] or '-'}）"
+             f"　峰值 {p['body_battery_peak']}　最低 {p['body_battery_min']}　当日最后 {p['body_battery_last']}")
     L.append("")
     L.append("5. 其他日常指标")
     L.append(f"  · 压力：平均 {p['stress_avg']} / 最高 {p['stress_max']}")
@@ -948,6 +1218,36 @@ def build_report(p, issues, date):
     L.append("")
     L.append("6. 旧伤晨起专项（需手动填写）")
     L.append("  · 左脚踝内侧胫骨后肌腱（）　腰椎（）　右脚跟腱（）")
+
+    # ---------- 教练判定 ----------
+    ev = p.get("coach_eval") or {}
+    L.append("")
+    L.append("【教练判定】")
+    L.append(f"  · 灯：{ev.get('icon', '⚪')} {ev.get('light', '-')}　结论：{ev.get('verdict', '-')}")
+    for r in (ev.get("reasons") or []):
+        L.append(f"  · 理由：{r}")
+    L.append("  · 计划调整：")
+    plan = ev.get("plan") or []
+    if not plan:
+        L.append("    （未获取到训练计划）")
+    else:
+        for w in plan:
+            tag = "今天" if w.get("is_today") else w.get("date")
+            if w.get("rest"):
+                L.append(f"    - {tag}：休息日 → 休")
+            else:
+                L.append(f"    - {tag}：{w.get('name') or '-'} {w.get('minutes') or '?'}min → "
+                         f"{w.get('verdict')}（{w.get('reason')}）"
+                         + (f"，调整为 {w['adjusted_min']}min" if w.get("adjusted_min") and w.get("minutes")
+                            and w["adjusted_min"] < w["minutes"] else ""))
+    runs = ev.get("runs") or []
+    if runs:
+        L.append("  · 已完成跑步复盘：")
+        for r in runs:
+            if r.get("flags"):
+                L.append(f"    - {r.get('name')}：{'；'.join(r['flags'])}")
+            else:
+                L.append(f"    - {r.get('name')}：无异常")
 
     # ---------- 总结 ----------
     red = [i for i in issues if i[2] == "红"]
@@ -1021,6 +1321,27 @@ def main():
         api = login_garmin()
         data = fetch_all(api, report_date)
         p = parse(data, api, report_date)
+
+        # 教练判定
+        ctx = compute_context(p)
+        decision = decide(ctx)
+        plan_eval = eval_plan(p, ctx)
+        run_eval = eval_runs(p)
+        p["coach_eval"] = coach_summary(p, ctx, decision, plan_eval, run_eval)
+        p["coach_row"] = {
+            "date": report_date,
+            "sleep_hours": p.get("sleep_hours"),
+            "sleep_score": p.get("sleep_score"),
+            "hrv_rmssd": p.get("hrv_night"),
+            "hrv_7d": p.get("hrv_weekly"),
+            "rhr": p.get("rhr"),
+            "training_load": sum((r.get("training_load") or 0) for r in p["run_activities"]),
+            "body_battery": p.get("body_battery"),
+            "stress": p.get("stress_avg"),
+            "pain": p.get("pain"),
+            "ankle": p.get("ankle"),
+        }
+
         issues = check_rules(p)
         report = build_report(p, issues, report_date)
 
