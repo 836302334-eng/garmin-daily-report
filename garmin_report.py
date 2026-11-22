@@ -235,6 +235,46 @@ def cleanup_old_reports(report_dir: Path, retention_days: int):
 
 
 # ==================== 拉数据 ====================
+def fetch_weather(lat, lon, dt_local_str):
+    """用 Open-Meteo 取跑步时段的真实天气（免 key）。失败返回 None。"""
+    if lat is None or lon is None or not dt_local_str:
+        return None
+    try:
+        dt = datetime.datetime.strptime(dt_local_str[:19], "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return None
+    hour = dt.replace(minute=0, second=0, microsecond=0)
+    params = {
+        "latitude": round(float(lat), 3),
+        "longitude": round(float(lon), 3),
+        "hourly": "temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation",
+        "timezone": "Asia/Shanghai",
+        "past_days": 7,
+        "forecast_days": 1,
+    }
+    for base in ("https://api.open-meteo.com/v1/forecast",
+                 "https://archive-api.open-meteo.com/v1/archive"):
+        try:
+            r = requests.get(base, params=params, timeout=10)
+            data = r.json()
+            hourly = data.get("hourly") or {}
+            times = hourly.get("time") or []
+            key = hour.strftime("%Y-%m-%dT%H:%M")
+            if key in times:
+                i = times.index(key)
+                return {
+                    "temp": hourly["temperature_2m"][i],
+                    "humidity": hourly["relative_humidity_2m"][i],
+                    "wind": hourly["wind_speed_10m"][i],
+                    "precip": hourly["precipitation"][i],
+                    "at": key,
+                    "source": "Open-Meteo",
+                }
+        except Exception:
+            continue
+    return None
+
+
 def fetch_all(api, date):
     data = {}
     data["training_status"] = safe(lambda: api.get_training_status(date))
@@ -393,6 +433,8 @@ def parse_run(a, hr_zones):
         "temp_min": a.get("minTemperature"),
         "temp_max": a.get("maxTemperature"),
         "device": None,
+        "lat": a.get("startLatitude"),
+        "lon": a.get("startLongitude"),
         "distance_km": round(d / 1000, 2) if d else 0,
         "duration": fmt_sec(dur),
         "duration_sec": float(dur or 0),
@@ -795,6 +837,7 @@ def parse(data, api=None, report_date=None):
                 zones = safe(lambda: api.get_activity_hr_in_timezones(run_act.get("activityId")))
             r = parse_run(run_act, zones)
             r["device"] = p["device"]
+            r["weather"] = safe(lambda: fetch_weather(r.get("lat"), r.get("lon"), r.get("time")))
             if api is not None:
                 r["intensity"] = analyze_intensity(api, run_act.get("activityId"), r.get("main_pace"))
                 r["cardiac_drift"] = analyze_cardiac_drift(api, run_act.get("activityId"))
@@ -1044,10 +1087,14 @@ def check_rules(p):
     if p["sleep_score"] is not None and p["sleep_score"] < 60:
         add("睡眠差", f"睡眠得分={p['sleep_score']}", "黄", "别上强度，今晚早睡")
 
-    if p["hrv_status"] in ("失衡", "偏低", "很差"):
+    if p["hrv_night"] is not None and p["hrv_night"] < COACH["hrv_abs"]:
+        add("HRV低于红线", f"HRV={p['hrv_night']} < {COACH['hrv_abs']:.0f}", "红", "今天不做强度；只做轻松跑或休")
+    elif p["hrv_status"] in ("失衡", "偏低", "很差"):
         add("HRV失衡", f"HRV={p['hrv_status']}", "黄", "强度降档，别做间歇")
 
-    if p["rhr"] is not None and p["rhr_7d"] is not None and (p["rhr"] - p["rhr_7d"]) >= COACH["rhr_delta"]:
+    if p["rhr"] is not None and p["rhr"] >= COACH["rhr_red"]:
+        add("静息心率高", f"今日{p['rhr']} ≥ 红线 {COACH['rhr_red']:.0f}", "红", "休息或极轻松活动")
+    elif p["rhr"] is not None and p["rhr_7d"] is not None and (p["rhr"] - p["rhr_7d"]) >= COACH["rhr_delta"]:
         add("静息心率高", f"今日{p['rhr']} vs 近7天{p['rhr_7d']}", "黄", "休息或极轻松活动")
 
     bb_peak = p.get("body_battery_peak")
@@ -1088,7 +1135,13 @@ def build_report(p, issues, date):
             L.append(f"  · 日期与时间：{ra['time']}（{ra['period']}）")
             if ra.get("course"):
                 L.append(f"  · 本次课程：{ra['course'][0]}")
-            L.append(f"  · 天气：温度 {ra['temp_min']}~{ra['temp_max']}℃　湿度（）　风速/降雨（）")
+            w = ra.get("weather")
+            if w:
+                L.append(f"  · 天气（{w['source']}）：温度 {w['temp']}℃　湿度 {w['humidity']}%"
+                         f"　风速 {w['wind']} km/h　降雨 {w['precip']} mm")
+                L.append(f"    （设备温度 {ra['temp_min']}~{ra['temp_max']}℃ 为腕温，仅参考）")
+            else:
+                L.append(f"  · 天气：温度 {ra['temp_min']}~{ra['temp_max']}℃（设备）　湿度（）　风速/降雨（）")
             L.append(f"  · 装备：手表 {ra['device'] or '-'}　跑鞋型号（）")
             L.append("")
             L.append("2. 核心配速与距离指标")
@@ -1266,11 +1319,12 @@ def build_report(p, issues, date):
     body_red = [i for i in issues if i[2] == "红" and i[0] != "计划超时"]
     plan_red = [i for i in issues if i[2] == "红" and i[0] == "计划超时"]
     yellow = [i for i in issues if i[2] == "黄"]
-    if body_red:
-        summary = f"今天身体明显没恢复（{len(body_red)} 项红），不适合跑强度课。"
+    ev_light = (p.get("coach_eval") or {}).get("light")
+    if ev_light == "红" or body_red:
+        summary = "今天状态红灯，不做主课。"
     elif plan_red:
         summary = "身体指标没有明显异常，但 Garmin 的计划本身超了你的红线，已按上限降级。"
-    elif yellow:
+    elif ev_light == "黄" or yellow:
         summary = f"今天状态总体还行（{len(yellow)} 项提醒），照常训练，注意下面几点。"
     else:
         summary = "今天各项指标正常，可以照课表练。"
