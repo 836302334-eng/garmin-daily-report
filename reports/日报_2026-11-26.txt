@@ -1,0 +1,71 @@
+================================================
+Garmin 训练日报 · 2026-11-26
+================================================
+
+【第一大类：跑步训练数据】
+（前 24 小时无跑步记录）
+  ⚠ 今日步数与距离显示有活动，但未识别到跑步记录：可能是活动类型（越野/跑步机/场地）或尚未同步
+
+【第二大类：力量训练数据】
+（前 24 小时无力量训练记录）
+
+【第三大类：晨起恢复数据】
+
+1. 睡眠数据
+  · 睡眠评分：79（一般）
+  · 总时长 7小时28分　午睡 30分钟
+  · 深睡 1小时42分 / 浅睡 4小时0分 / REM 1小时46分 / 清醒 29分钟
+  · 分项：时长[良好] 压力[一般] 清醒次数[一般]
+  · 分项：REM[24% 优秀] 浅睡[54% 优秀] 深睡[23% 优秀] 不安[一般]
+  · 血氧 95.0%（最低 84%）　呼吸 13.0次/分
+  · 睡眠心率 52.0　睡眠压力 23.0
+  · 睡眠需求 460 / 基准 480 分钟　实睡 448 分钟　欠 12 分钟
+
+2. HRV 状态
+  · 状态 失衡　昨晚均值 58ms　昨晚5分钟最高 91ms
+  · 7天均值 69ms　平衡区间 74~97ms
+
+3. 静息心率
+  · 今晨 46　对比7天均值 45
+
+4. 身体电量
+  · 晨起峰值 73（中等）　午夜起点 18　最低 18　当日最后 31
+
+5. 其他日常指标
+  · 压力：平均 35 / 最高 98
+  · 步数 9476　距离 7.4km　消耗 1780.0千卡
+  · 今天课表：有安排
+
+6. 旧伤晨起专项（需手动填写）
+  · 左脚踝内侧胫骨后肌腱（）　腰椎（）　右脚跟腱（）
+
+【教练判定】
+  · 灯：🔴 红　结论：休
+  · 理由：HRV 58 < 76
+  · 理由：静息心率 46 ≥ 绝对红线 44
+  · 理由：电量 73 < 80
+  · 计划调整：
+    - 今天：节奏 50min → 降级（强度课与 7 日均 HRV 69 偏低冲突；按轻松跑 40 min 执行），调整为 40min
+    - 2026-11-27：基础训练 35min → 照做（与状态匹配）
+    - 2026-11-28：长距离跑 70min → 改（时长 70min > 上限 50min），调整为 50min
+
+【总结】
+今天状态红灯，不做主课。
+
+问题与建议：
+🔴 [HRV低于红线] 红｜HRV=58 < 76
+   → 今天不做强度；只做轻松跑或休
+🔴 [静息心率高] 红｜今日46 ≥ 红线 44
+   → 休息或极轻松活动
+🟡 [身体电量低] 黄｜当日峰值电量=73
+   → 先充电，强度课换轻松跑或后挪
+🔴 [计划超时] 红｜2026-11-28 长距离跑 70min > 上限 50min
+   → 按红线砍到 ≤50 min，别照抄 Garmin
+
+【训练计划（Garmin Coach · 5公里 计划）】
+  · 今天：节奏｜配速 3x8:00@5:20/km｜约 50 分钟｜节奏跑
+  · 2026-11-27：基础训练｜配速 6:20/km｜约 35 分钟｜有氧基础
+  · 2026-11-28：长距离跑｜配速 6:20/km｜约 70 分钟｜有氧基础
+
+【原始数据（可复制导出）】
+{"date": "2026-11-26", "training_status": "维持", "fitness_trend": "持平", "acwr_ratio": 0.3, "acwr_status_raw": "LOW", "acwr_status": "偏低", "acute_load": 101, "chronic_load": 254, "vo2max": 47.8, "load_balance": "AEROBIC_HIGH_SHORTAGE", "load_alow": 619.24097, "load_alow_min": 261, "load_alow_max": 595, "load_ahigh": 338.06003, "load_ahigh_min": 539, "load_ahigh_max": 873, "load_ana": 77.846466, "load_ana_min": 267, "load_ana_max": 467, "device": "Forerunner 265", "sleep_score": 79, "sleep_qualifier_raw": "FAIR", "sleep_qualifier": "一般", "sleep_duration": "7小时28分", "nap": "30分钟", "deep": "1小时42分", "light": "4小时0分", "rem": "1小时46分", "awake": "29分钟", "sleep_subs": {"时长": "良好", "压力": "一般", "清醒次数": "一般", "REM占比": "24% 优秀", "浅睡占比": "54% 优秀", "深睡占比": "23% 优秀", "不安": "一般"}, "spo2_avg": 95.0, "spo2_low": 84, "respiration": 13.0, "sleep_hr": 52.0, "sleep_stress": 23.0, "sleep_need_min": 460, "sleep_need_baseline": 480, "sleep_actual_min": 448, "sleep_debt_min": 12, "sleep_hours": 7.47, "hrv_status_raw": "UNBALANCED", "hrv_status": "失衡", "hrv_night": 58, "hrv_5min_high": 91, "hrv_weekly": 69, "hrv_baseline_low": 74, "hrv_baseline_high": 97, "rhr": 46, "rhr_7d": 45, "stress_avg": 35, "stress_max": 98, "steps": 9476, "distance_km": 7.4, "calories": 1780.0, "has_workout": true, "body_battery": 73, "body_battery_peak": 73, "body_battery_min": 18, "body_battery_last": 31, "bb_level": "中等", "body_battery_midnight": 18, "run_activities": [], "strength_activities": [], "run_missing_hint": true, "plan_name": "5公里 计划", "plan_workouts": [{"date": "2026-11-26", "is_today": true, "name": "节奏", "desc": "3x8:00@5:20/km", "dur_sec": 3000, "effect": "TEMPO", "rest": false}, {"date": "2026-11-27", "is_today": false, "name": "基础训练", "desc": "6:20/km", "dur_sec": 2100, "effect": "AEROBIC_BASE", "rest": false}, {"date": "2026-11-28", "is_today": false, "name": "长距离跑", "desc": "6:20/km", "dur_sec": 4200, "effect": "AEROBIC_BASE", "rest": false}], "ankle": null, "pain": null, "energy": null, "soreness": null, "coach_eval": {"icon": "🔴", "light": "红", "verdict": "休", "reasons": ["HRV 58 < 76", "静息心率 46 ≥ 绝对红线 44", "电量 73 < 80"], "plan": [{"date": "2026-11-26", "is_today": true, "name": "节奏", "desc": "3x8:00@5:20/km", "dur_sec": 3000, "effect": "TEMPO", "rest": false, "minutes": 50, "light": "黄", "verdict": "降级", "reason": "强度课与 7 日均 HRV 69 偏低冲突；按轻松跑 40 min 执行", "adjusted_min": 40}, {"date": "2026-11-27", "is_today": false, "name": "基础训练", "desc": "6:20/km", "dur_sec": 2100, "effect": "AEROBIC_BASE", "rest": false, "minutes": 35, "light": "绿", "verdict": "照做", "reason": "与状态匹配", "adjusted_min": 35}, {"date": "2026-11-28", "is_today": false, "name": "长距离跑", "desc": "6:20/km", "dur_sec": 4200, "effect": "AEROBIC_BASE", "rest": false, "minutes": 70, "light": "红", "verdict": "改", "reason": "时长 70min > 上限 50min", "adjusted_min": 50}], "runs": [], "today_plan": {"date": "2026-11-26", "is_today": true, "name": "节奏", "desc": "3x8:00@5:20/km", "dur_sec": 3000, "effect": "TEMPO", "rest": false, "minutes": 50, "light": "黄", "verdict": "降级", "reason": "强度课与 7 日均 HRV 69 偏低冲突；按轻松跑 40 min 执行", "adjusted_min": 40}}, "coach_row": {"date": "2026-11-26", "sleep_hours": 7.47, "sleep_score": 79, "hrv_rmssd": 58, "hrv_7d": 69, "rhr": 46, "training_load": 0, "body_battery": 73, "stress": 35, "pain": null, "ankle": null}}
